@@ -1,0 +1,1823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PULSE — Every City Has a Heartbeat</title>
+
+  <!-- Favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>" />
+
+  <!-- OG / LinkedIn preview -->
+  <meta property="og:title" content="PULSE — Every City Has a Heartbeat" />
+  <meta property="og:description" content="Click any city on Earth → hear its live radio stream + see its real-time mood. 30,000+ stations across 196 countries. No app, no backend, one HTML file." />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="PULSE — Every City Has a Heartbeat" />
+  <meta name="twitter:description" content="Click any city on Earth → live radio + real-time city mood. Patent-pending Mood Engine." />
+  <meta name="description" content="Click any city on Earth → hear its live radio stream + see its real-time mood. 30,000+ stations across 196 countries." />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Inter',sans-serif;background:#0a0a1a;color:#fff;height:100vh;overflow:hidden}
+
+    /* MAP */
+    #map{width:100%;height:100vh;z-index:1;cursor:crosshair}
+    .leaflet-container{background:#0a0a1a}
+
+    /* Override leaflet popup */
+    .leaflet-popup-content-wrapper{
+      background:rgba(10,10,30,0.95);backdrop-filter:blur(20px);
+      border:1px solid rgba(255,255,255,0.12);border-radius:14px;
+      box-shadow:0 8px 40px rgba(0,0,0,0.6);color:#fff;padding:0
+    }
+    .leaflet-popup-tip-container{display:none}
+    .leaflet-popup-close-button{color:rgba(255,255,255,0.4)!important;top:10px!important;right:10px!important;font-size:18px!important;width:24px!important;height:24px!important}
+    .pop-card{padding:16px 20px 14px}
+    .pop-city{font-size:16px;font-weight:700;margin-bottom:3px}
+    .pop-meta{font-size:11px;color:rgba(255,255,255,0.45);display:flex;gap:8px;align-items:center}
+    .pop-mood{
+      display:inline-block;padding:2px 10px;border-radius:20px;
+      font-size:10px;font-weight:700;letter-spacing:0.8px;
+      margin-top:6px
+    }
+
+    /* MOOD FILTER BAR */
+    #mood-filter{
+      position:fixed;bottom:28px;left:50%;transform:translateX(-50%);
+      z-index:900;display:flex;gap:7px;align-items:center;
+      background:rgba(8,8,24,0.88);backdrop-filter:blur(20px);
+      border:1px solid rgba(255,255,255,0.1);border-radius:40px;
+      padding:7px 12px;max-width:90vw;overflow-x:auto;
+      scrollbar-width:none;white-space:nowrap
+    }
+    #mood-filter::-webkit-scrollbar{display:none}
+    .mf-btn{
+      background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);
+      color:rgba(255,255,255,0.5);font-size:11px;font-weight:600;
+      font-family:'Inter',sans-serif;padding:5px 13px;border-radius:20px;
+      cursor:pointer;transition:all 0.2s;white-space:nowrap;flex-shrink:0
+    }
+    .mf-btn:hover{background:rgba(255,255,255,0.1);color:#fff}
+    .mf-btn.active{color:#fff;border-color:currentColor}
+    .mf-sep{width:1px;height:16px;background:rgba(255,255,255,0.1);flex-shrink:0}
+
+    /* HOTSPOT HOVER */
+    .hs-dot{transition:transform 0.2s,box-shadow 0.2s,opacity 0.4s}
+    .hs-dot:hover{transform:scale(1.7)!important}
+    .hs-dot.dimmed{opacity:0.12}
+    .hs-dot.highlighted{transform:scale(1.4);filter:brightness(1.4)}
+
+    /* SEARCH BAR */
+    #search-wrap{
+      position:fixed;top:20px;left:50%;transform:translateX(-50%);
+      z-index:900;width:340px
+    }
+    #search-input{
+      width:100%;padding:13px 20px;
+      background:rgba(10,10,30,0.92);backdrop-filter:blur(20px);
+      border:1px solid rgba(255,255,255,0.14);border-radius:40px;
+      color:#fff;font-size:14px;font-family:'Inter',sans-serif;outline:none;
+      transition:border-color 0.2s,box-shadow 0.2s
+    }
+    #search-input::placeholder{color:rgba(255,255,255,0.35)}
+    #search-input:focus{border-color:rgba(139,92,246,0.6);box-shadow:0 0 0 3px rgba(139,92,246,0.15)}
+    #search-results{
+      margin-top:6px;background:rgba(10,10,30,0.95);backdrop-filter:blur(20px);
+      border:1px solid rgba(255,255,255,0.1);border-radius:14px;
+      overflow:hidden;display:none
+    }
+    #search-results.show{display:block}
+    .sr-item{
+      padding:11px 18px;cursor:pointer;font-size:13px;color:rgba(255,255,255,0.8);
+      transition:background 0.15s;border-bottom:1px solid rgba(255,255,255,0.05)
+    }
+    .sr-item:last-child{border-bottom:none}
+    .sr-item:hover{background:rgba(139,92,246,0.15);color:#fff}
+    .sr-sub{font-size:11px;color:rgba(255,255,255,0.35);margin-top:1px}
+
+    /* TITLE / LOGO */
+    #title-chip{
+      position:fixed;top:20px;left:20px;z-index:900;
+      background:rgba(8,8,24,0.92);backdrop-filter:blur(24px);
+      border:1px solid rgba(139,92,246,0.3);border-radius:20px;
+      padding:14px 20px;
+      box-shadow:0 0 50px rgba(139,92,246,0.18),0 4px 30px rgba(0,0,0,0.5)
+    }
+    #logo-row{display:flex;align-items:center;gap:10px}
+    #pulse-logo-icon{width:48px;height:30px;flex-shrink:0;
+      filter:drop-shadow(0 0 8px rgba(139,92,246,0.6))}
+    #title-chip h1{
+      font-size:30px;font-weight:900;letter-spacing:-1px;line-height:1;
+      background:linear-gradient(135deg,#a78bfa 0%,#60a5fa 50%,#f472b6 100%);
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text
+    }
+    #title-chip p{font-size:10px;color:rgba(255,255,255,0.4);margin-top:5px;letter-spacing:0.4px}
+    #global-stats{margin-top:8px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+    #global-stats span{font-size:9px;color:rgba(255,255,255,0.28);font-weight:500}
+    .stat-sep{color:rgba(255,255,255,0.15)!important}
+    #stat-stations{color:rgba(139,92,246,0.7)!important}
+
+    /* DANCING MONKEY */
+    #monkey-stage{
+      position:fixed;bottom:72px;left:22px;z-index:800;
+      display:none;flex-direction:column;align-items:center;width:56px
+    }
+    #monkey-stage.active{display:flex}
+    .mk-scene{display:flex;align-items:flex-end;position:relative;gap:0}
+    .mk-arm{
+      width:7px;height:18px;
+      background:linear-gradient(180deg,#92400e,#78350f);
+      border-radius:4px;flex-shrink:0;margin-bottom:4px
+    }
+    .mk-arm-l{
+      transform-origin:top center;
+      animation:armL 0.45s ease-in-out infinite alternate
+    }
+    .mk-arm-r{
+      transform-origin:top center;
+      animation:armR 0.45s ease-in-out infinite alternate
+    }
+    @keyframes armL{from{transform:rotate(-50deg)}to{transform:rotate(20deg)}}
+    @keyframes armR{from{transform:rotate(50deg)}to{transform:rotate(-20deg)}}
+    .mk-body{
+      display:flex;flex-direction:column;align-items:center;
+      animation:mkBounce 0.45s ease-in-out infinite alternate
+    }
+    @keyframes mkBounce{
+      from{transform:translateY(0) rotate(-3deg)}
+      to{transform:translateY(-10px) rotate(3deg)}
+    }
+    .mk-head{font-size:26px;line-height:1;display:block}
+    .mk-torso{
+      width:20px;height:14px;
+      background:linear-gradient(180deg,#92400e,#78350f);
+      border-radius:7px 7px 5px 5px;margin-top:-3px
+    }
+    .mk-legs{display:flex;gap:4px;margin-top:2px}
+    .mk-leg{width:7px;height:10px;background:#78350f;border-radius:0 0 4px 4px}
+    .mk-leg-l{animation:legL 0.225s ease-in-out infinite alternate}
+    .mk-leg-r{animation:legR 0.225s ease-in-out infinite alternate}
+    @keyframes legL{from{transform:rotate(-18deg) translateY(0)}to{transform:rotate(18deg) translateY(-2px)}}
+    @keyframes legR{from{transform:rotate(18deg) translateY(-2px)}to{transform:rotate(-18deg) translateY(0)}}
+    .mk-note{
+      position:absolute;font-size:13px;opacity:0;
+      animation:noteUp 1.4s ease-out infinite;pointer-events:none
+    }
+    .mk-note-1{left:-14px;bottom:10px;animation-delay:0s;color:#a78bfa}
+    .mk-note-2{right:-14px;bottom:14px;animation-delay:0.55s;color:#60a5fa}
+    .mk-note-3{left:50%;bottom:32px;margin-left:-6px;animation-delay:1.1s;color:#f472b6}
+    @keyframes noteUp{
+      0%{opacity:0;transform:translateY(0) scale(0.7)}
+      25%{opacity:1}
+      100%{opacity:0;transform:translateY(-36px) scale(1.1)}
+    }
+
+    /* DARK COUNTRY MAP — invert Voyager tiles to dark palette */
+    .country-layer .leaflet-tile{
+      filter:invert(1) hue-rotate(180deg) brightness(0.78) saturate(1.3) contrast(0.95)
+    }
+
+    /* MAP VIGNETTE */
+    #map-vignette{
+      position:fixed;inset:0;z-index:2;pointer-events:none;
+      background:radial-gradient(ellipse at 40% 50%, transparent 45%, rgba(4,4,14,0.55) 100%)
+    }
+
+    /* FACT CARD */
+    .fact-card{
+      background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.15);
+      border-radius:12px;padding:13px 16px;margin-bottom:16px;display:none
+    }
+    .fact-label{font-size:9px;color:rgba(139,92,246,0.6);text-transform:uppercase;letter-spacing:0.9px;margin-bottom:5px;font-weight:700}
+    .fact-text{font-size:12px;color:rgba(255,255,255,0.55);line-height:1.7}
+
+    /* HINT */
+    #hint{
+      position:fixed;bottom:28px;left:50%;transform:translateX(-50%);
+      z-index:900;background:rgba(10,10,30,0.85);backdrop-filter:blur(12px);
+      border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.6);
+      padding:9px 20px;border-radius:40px;font-size:12px;font-weight:500;
+      pointer-events:none;transition:opacity 0.5s;white-space:nowrap
+    }
+
+    /* HOTSPOT LABELS */
+    .hs-label{
+      background:none!important;border:none!important;box-shadow:none!important;
+      color:rgba(255,255,255,0.82);
+      font-size:10px;font-weight:700;white-space:nowrap;
+      text-shadow:0 1px 6px rgba(0,0,0,1),0 0 12px rgba(0,0,0,0.9);
+      padding:0;letter-spacing:0.2px
+    }
+    .leaflet-tooltip-top.hs-label::before{display:none}
+    /* Labels must NOT intercept clicks — let them fall through to the marker */
+    .leaflet-tooltip.hs-label{pointer-events:none!important}
+    .hs-dot{
+      width:16px;height:16px;border-radius:50%;cursor:pointer;
+      border:2px solid rgba(255,255,255,0.3);
+      animation:hspulse 2.5s ease-in-out infinite
+    }
+    @keyframes hspulse{
+      0%,100%{box-shadow:0 0 0 0 rgba(139,92,246,0.7),0 0 8px currentColor}
+      50%{box-shadow:0 0 0 12px rgba(139,92,246,0),0 0 16px currentColor}
+    }
+
+    /* RIPPLE */
+    .ripple-ring{
+      width:80px;height:80px;border-radius:50%;
+      border:2.5px solid;
+      animation:rippleExpand 1.2s ease-out forwards;
+      pointer-events:none
+    }
+    @keyframes rippleExpand{
+      0%{transform:scale(0.1);opacity:1}
+      100%{transform:scale(1);opacity:0}
+    }
+    .pin-wrap{position:relative}
+    .pin-core{
+      width:16px;height:16px;
+      border-radius:50% 50% 50% 0;transform:rotate(-45deg);
+      border:2.5px solid rgba(255,255,255,0.9);
+      box-shadow:0 2px 16px rgba(139,92,246,0.7)
+    }
+    .pin-ring{
+      position:absolute;width:32px;height:32px;border-radius:50%;
+      top:-8px;left:-8px;opacity:0.3;
+      animation:pinring 2s ease-out infinite
+    }
+    @keyframes pinring{0%{transform:scale(0.4);opacity:0.6}100%{transform:scale(1.8);opacity:0}}
+
+    /* LOADING */
+    #loading{
+      position:fixed;right:0;top:0;width:440px;height:100vh;
+      background:rgba(8,8,22,0.97);backdrop-filter:blur(24px);
+      border-left:1px solid rgba(255,255,255,0.07);z-index:1001;
+      display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px
+    }
+    #loading.show{display:flex}
+    .spinner{
+      width:40px;height:40px;
+      border:3px solid rgba(255,255,255,0.07);border-top-color:#8b5cf6;
+      border-radius:50%;animation:spin 0.7s linear infinite
+    }
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .loading-label{font-size:13px;color:rgba(255,255,255,0.35);letter-spacing:0.2px}
+
+    /* PANEL */
+    #panel{
+      position:fixed;right:0;top:0;width:440px;height:100vh;
+      background:linear-gradient(180deg,#0d0d22 0%,#080818 100%);
+      border-left:1px solid rgba(255,255,255,0.07);z-index:1000;
+      transform:translateX(100%);
+      transition:transform 0.44s cubic-bezier(0.16,1,0.3,1);
+      display:flex;flex-direction:column;overflow:hidden
+    }
+    #panel.open{transform:translateX(0)}
+
+    /* ALBUM ART AREA */
+    .album-area{
+      height:220px;position:relative;overflow:hidden;flex-shrink:0;
+      background:#080818
+    }
+    /* Layer 1 — city photo (cross-fades on city change) */
+    .city-bg-photo{
+      position:absolute;inset:0;
+      background-size:cover;background-position:center top;
+      opacity:0;transition:opacity 0.85s cubic-bezier(0.16,1,0.3,1);
+      transform:scale(1.04);/* slight zoom-out on load via transition below */
+      will-change:opacity,transform
+    }
+    .city-bg-photo.loaded{
+      opacity:1;transform:scale(1)
+    }
+    /* Layer 2 — dark blur (always present for readability) */
+    .city-blur-dark{
+      position:absolute;inset:0;
+      background:rgba(0,0,0,0.38);
+      backdrop-filter:blur(1.5px);-webkit-backdrop-filter:blur(1.5px)
+    }
+    /* Layer 3 — mood colour gradient (updates with mood) */
+    .city-mood-overlay{
+      position:absolute;inset:0;
+      background:linear-gradient(to bottom,rgba(139,92,246,0.55) 0%,rgba(139,92,246,0.12) 42%,rgba(8,8,24,0.97) 100%);
+      transition:background 0.7s ease
+    }
+    .album-content{
+      position:absolute;bottom:0;left:0;right:0;padding:20px 24px 18px
+    }
+    .close-btn{
+      position:absolute;top:14px;right:14px;
+      width:32px;height:32px;border-radius:50%;
+      background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.15);
+      color:rgba(255,255,255,0.6);cursor:pointer;font-size:14px;
+      display:flex;align-items:center;justify-content:center;
+      transition:all 0.2s;z-index:2
+    }
+    .close-btn:hover{background:rgba(255,255,255,0.15);color:#fff;border-color:rgba(255,255,255,0.3)}
+
+    .mood-pill{
+      display:inline-flex;align-items:center;gap:5px;
+      padding:4px 12px;border-radius:20px;
+      font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;
+      margin-bottom:8px;border:1px solid;transition:all 0.5s
+    }
+    .city-name-big{
+      font-size:24px;font-weight:800;letter-spacing:-0.5px;
+      line-height:1.2;text-shadow:0 2px 20px rgba(0,0,0,0.5)
+    }
+    .country-line{
+      font-size:13px;color:rgba(255,255,255,0.5);
+      display:flex;align-items:center;gap:6px;margin-top:4px
+    }
+    .cf{font-size:20px}
+
+    /* Waveform */
+    .waveform{display:flex;align-items:center;gap:3px;height:22px;margin-top:10px}
+    .waveform.hidden{visibility:hidden}
+    .wbar{width:3px;border-radius:2px;animation:wave 1s ease-in-out infinite}
+    .wbar:nth-child(1){height:8px;animation-delay:0s}
+    .wbar:nth-child(2){height:16px;animation-delay:0.1s}
+    .wbar:nth-child(3){height:12px;animation-delay:0.2s}
+    .wbar:nth-child(4){height:20px;animation-delay:0.3s}
+    .wbar:nth-child(5){height:10px;animation-delay:0.4s}
+    .wbar:nth-child(6){height:18px;animation-delay:0.5s}
+    .wbar:nth-child(7){height: 7px;animation-delay:0.6s}
+    @keyframes wave{0%,100%{transform:scaleY(1);opacity:0.6}50%{transform:scaleY(2);opacity:1}}
+    .waveform.paused .wbar{animation-play-state:paused;opacity:0.2}
+
+    /* PANEL BODY */
+    .pb{flex:1;overflow-y:auto;padding:18px 24px;scrollbar-width:none}
+    .pb::-webkit-scrollbar{display:none}
+
+    /* City moment */
+    .city-moment-card{
+      background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);
+      border-radius:12px;padding:13px 16px;margin-bottom:16px;
+      font-size:12px;color:rgba(255,255,255,0.5);line-height:1.7;font-style:italic
+    }
+
+    /* WHY THIS MOOD — structured explanation card */
+    .why-mood-card{
+      border-radius:14px;padding:14px 16px;margin-bottom:16px;
+      border:1px solid rgba(255,255,255,0.08);
+      background:rgba(255,255,255,0.03);
+      display:none
+    }
+    .why-mood-card.visible{display:block;animation:factIn 0.5s ease-out both}
+    .why-top-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+    .why-title{font-size:9px;color:rgba(255,255,255,0.28);text-transform:uppercase;letter-spacing:0.9px}
+    .why-mood-name{
+      font-size:11px;font-weight:800;letter-spacing:0.5px;text-transform:uppercase;
+      padding:3px 10px;border-radius:10px;border:1px solid
+    }
+    .why-refined-badge{
+      font-size:8px;font-weight:700;padding:1px 6px;border-radius:6px;margin-left:5px;
+      background:rgba(139,92,246,0.2);border:1px solid rgba(139,92,246,0.3);
+      color:rgba(139,92,246,0.9);letter-spacing:0.5px;vertical-align:middle
+    }
+    /* Reason pills */
+    .why-reasons{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+    .why-reason{
+      display:flex;align-items:flex-start;gap:8px;
+      font-size:11px;color:rgba(255,255,255,0.55);line-height:1.5
+    }
+    .why-reason-icon{font-size:12px;flex-shrink:0;margin-top:1px}
+    .why-reason-text em{font-style:normal;color:#fff;font-weight:600}
+    /* Energy bar */
+    .why-energy-row{display:flex;align-items:center;gap:10px;margin-top:4px}
+    .why-energy-label{font-size:9px;color:rgba(255,255,255,0.25);width:52px;flex-shrink:0}
+    .why-energy-track{flex:1;height:4px;background:rgba(255,255,255,0.07);border-radius:2px;overflow:hidden}
+    .why-energy-fill{height:4px;border-radius:2px;width:0;transition:width 0.9s cubic-bezier(0.16,1,0.3,1)}
+    .why-energy-pct{font-size:9px;color:rgba(255,255,255,0.3);width:28px;text-align:right;flex-shrink:0}
+
+    /* INFO GRID */
+    .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+    .ic{
+      background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);
+      border-radius:12px;padding:12px 14px
+    }
+    .ic-label{font-size:10px;color:rgba(255,255,255,0.28);text-transform:uppercase;letter-spacing:0.9px;margin-bottom:5px}
+    .ic-value{font-size:15px;font-weight:600;color:#fff}
+    .ic-value.clock{
+      font-size:19px;font-weight:700;font-variant-numeric:tabular-nums;
+      transition:background 0.5s
+    }
+    .ic-sub{font-size:10px;color:rgba(255,255,255,0.28);margin-top:2px}
+
+    /* Tags */
+    .sec-label{font-size:10px;color:rgba(255,255,255,0.28);text-transform:uppercase;letter-spacing:0.9px;margin-bottom:8px}
+    .tags{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:16px}
+    .tag{
+      background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);
+      color:rgba(255,255,255,0.5);padding:4px 11px;border-radius:20px;font-size:11px
+    }
+
+    /* PLAYER */
+    .player{
+      background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);
+      border-radius:14px;padding:16px 18px;margin-bottom:16px
+    }
+    .ps-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+    .ps-status{font-size:11px;color:rgba(255,255,255,0.35);display:flex;align-items:center;gap:6px}
+    .live-dot{width:6px;height:6px;border-radius:50%;background:#f87171;animation:blink 1.6s ease-in-out infinite}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:0.2}}
+    .controls{display:flex;align-items:center;gap:10px}
+    .btn-play{
+      width:48px;height:48px;border-radius:50%;border:none;color:#fff;
+      font-size:16px;cursor:pointer;flex-shrink:0;
+      display:flex;align-items:center;justify-content:center;
+      transition:transform 0.15s,box-shadow 0.15s
+    }
+    .btn-play:hover{transform:scale(1.1)}
+    .btn-next{
+      flex:1;padding:12px;background:rgba(255,255,255,0.05);
+      border:1px solid rgba(255,255,255,0.08);border-radius:10px;
+      color:rgba(255,255,255,0.65);font-size:12px;font-family:'Inter',sans-serif;
+      font-weight:500;cursor:pointer;transition:all 0.2s
+    }
+    .btn-next:hover{background:rgba(255,255,255,0.1);color:#fff}
+
+    /* SHARE BUTTON */
+    .btn-share{
+      width:100%;padding:13px;margin-bottom:16px;
+      background:linear-gradient(135deg,#0077b5,#006097);
+      border:none;border-radius:12px;color:#fff;font-size:13px;
+      font-family:'Inter',sans-serif;font-weight:600;cursor:pointer;
+      display:flex;align-items:center;justify-content:center;gap:8px;
+      transition:transform 0.15s,box-shadow 0.15s
+    }
+    .btn-share:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,119,181,0.4)}
+    .btn-share svg{width:16px;height:16px;fill:currentColor}
+
+    /* STATION LIST */
+    .stn-header{
+      display:flex;align-items:center;justify-content:space-between;
+      margin-bottom:10px
+    }
+    .stn-count-badge{
+      background:rgba(139,92,246,0.15);border:1px solid rgba(139,92,246,0.25);
+      color:rgba(139,92,246,0.9);padding:2px 10px;border-radius:20px;
+      font-size:10px;font-weight:700
+    }
+    .station-item{
+      display:flex;align-items:center;gap:10px;
+      padding:10px 12px;border-radius:10px;cursor:pointer;
+      transition:background 0.15s;margin-bottom:4px;border:1px solid transparent
+    }
+    .station-item:hover{background:rgba(255,255,255,0.06)}
+    .station-item.active{background:rgba(139,92,246,0.12);border-color:rgba(139,92,246,0.25)}
+    .sdot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,0.18);flex-shrink:0}
+    .station-item.active .sdot{background:var(--accent,#8b5cf6);box-shadow:0 0 6px var(--accent,#8b5cf6)}
+    .sinfo{flex:1;min-width:0}
+    .sname{font-size:12px;color:rgba(255,255,255,0.6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .station-item.active .sname{color:#fff;font-weight:600}
+    .stags{display:flex;gap:4px;margin-top:3px;flex-wrap:nowrap;overflow:hidden}
+    .stag{font-size:9px;color:rgba(255,255,255,0.3);background:rgba(255,255,255,0.05);
+      padding:1px 6px;border-radius:4px;white-space:nowrap}
+    .sbr{font-size:9px;color:rgba(255,255,255,0.2);flex-shrink:0;white-space:nowrap}
+
+    .no-stn{text-align:center;padding:28px 16px;color:rgba(255,255,255,0.28);font-size:13px;line-height:1.7}
+
+    /* TOAST */
+    #toast{
+      position:fixed;bottom:32px;left:50%;transform:translateX(-50%) translateY(80px);
+      z-index:2000;background:rgba(30,30,60,0.98);backdrop-filter:blur(20px);
+      border:1px solid rgba(255,255,255,0.15);border-radius:12px;
+      padding:13px 22px;font-size:13px;color:#fff;font-weight:500;
+      transition:transform 0.35s cubic-bezier(0.16,1,0.3,1);white-space:nowrap;
+      box-shadow:0 8px 32px rgba(0,0,0,0.5)
+    }
+    #toast.show{transform:translateX(-50%) translateY(0)}
+
+    /* ── WORLD POSTCARDS ──────────────────────────────── */
+    .postcards-section{margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.06)}
+    .postcards-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+    .postcards-title{font-size:10px;color:rgba(255,255,255,0.28);text-transform:uppercase;letter-spacing:0.9px}
+    .btn-write{
+      background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);
+      color:rgba(139,92,246,0.9);font-size:11px;font-family:'Inter',sans-serif;font-weight:600;
+      padding:5px 12px;border-radius:20px;cursor:pointer;transition:all 0.2s
+    }
+    .btn-write:hover{background:rgba(139,92,246,0.22);color:#c4b5fd}
+
+    .postcard-form{
+      background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.18);
+      border-radius:14px;padding:14px 16px;margin-bottom:14px;display:none
+    }
+    .postcard-form.open{display:block}
+    .guidelines-box{
+      background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);
+      border-radius:8px;padding:10px 12px;margin-bottom:12px;
+      font-size:10px;color:rgba(255,255,255,0.35);line-height:1.7
+    }
+    .guidelines-box strong{color:rgba(255,255,255,0.5);display:block;margin-bottom:4px}
+    .name-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+    .anon-toggle{display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;color:rgba(255,255,255,0.45)}
+    .anon-toggle input{accent-color:#8b5cf6;width:14px;height:14px}
+    .pc-input{
+      width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);
+      border-radius:8px;padding:8px 12px;color:#fff;font-size:12px;font-family:'Inter',sans-serif;
+      outline:none;transition:border-color 0.2s
+    }
+    .pc-input:focus{border-color:rgba(139,92,246,0.5)}
+    .pc-input::placeholder{color:rgba(255,255,255,0.25)}
+    #pc-name{margin-bottom:10px}
+    #pc-name:disabled{opacity:0.35;cursor:not-allowed}
+    .pc-textarea{
+      width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);
+      border-radius:8px;padding:10px 12px;color:#fff;font-size:12px;font-family:'Inter',sans-serif;
+      outline:none;resize:none;height:72px;line-height:1.5;transition:border-color 0.2s
+    }
+    .pc-textarea:focus{border-color:rgba(139,92,246,0.5)}
+    .pc-textarea::placeholder{color:rgba(255,255,255,0.25)}
+    .pc-footer{display:flex;align-items:center;justify-content:space-between;margin-top:8px}
+    .pc-chars{font-size:10px;color:rgba(255,255,255,0.25)}
+    .pc-chars.warn{color:#f87171}
+    .btn-post{
+      background:linear-gradient(135deg,#7c3aed,#6d28d9);
+      border:none;border-radius:8px;color:#fff;font-size:12px;
+      font-family:'Inter',sans-serif;font-weight:600;
+      padding:8px 18px;cursor:pointer;transition:transform 0.15s,opacity 0.15s
+    }
+    .btn-post:hover{transform:translateY(-1px);opacity:0.9}
+    .btn-post:disabled{opacity:0.35;cursor:not-allowed;transform:none}
+
+    .pc-card{
+      background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);
+      border-radius:12px;padding:12px 14px;margin-bottom:8px;
+      animation:factIn 0.35s ease-out both
+    }
+    .pc-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+    .pc-author{font-size:11px;font-weight:600;color:rgba(255,255,255,0.55)}
+    .pc-time{font-size:10px;color:rgba(255,255,255,0.2)}
+    .pc-text{font-size:12px;color:rgba(255,255,255,0.65);line-height:1.6}
+    .no-posts{text-align:center;padding:16px 0;font-size:12px;color:rgba(255,255,255,0.22)}
+
+    /* VOLUME */
+    .vol-row{display:flex;align-items:center;gap:10px;margin-top:12px}
+    .vol-icon{font-size:13px;cursor:pointer;opacity:0.5;transition:opacity 0.15s;flex-shrink:0}
+    .vol-icon:hover{opacity:1}
+    input[type=range].vol-slider{
+      flex:1;height:3px;-webkit-appearance:none;appearance:none;
+      background:rgba(255,255,255,0.1);border-radius:2px;outline:none;cursor:pointer
+    }
+    input[type=range].vol-slider::-webkit-slider-thumb{
+      -webkit-appearance:none;width:13px;height:13px;border-radius:50%;
+      background:var(--accent,#8b5cf6);cursor:pointer;
+      box-shadow:0 0 6px var(--accent,#8b5cf6)
+    }
+
+    /* Fact card fade-in */
+    @keyframes factIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+    .fact-card.visible{animation:factIn 0.4s ease-out both}
+
+    /* MOBILE */
+    @media(max-width:640px){
+      #title-chip{top:12px;left:12px;padding:8px 14px}
+      #title-chip h1{font-size:22px}
+      #title-chip p{display:none}
+      #global-stats{display:none}
+      .leaflet-tooltip{display:none}
+      #monkey-stage{bottom:auto;top:50%;left:10px;transform:translateY(-50%) scale(0.85)}
+
+      #search-wrap{top:12px;left:12px;right:12px;width:auto;transform:none;
+        padding-left:130px}
+
+      #hint{font-size:11px;padding:7px 16px;bottom:20px}
+
+      #panel{
+        width:100%;height:72vh;
+        top:auto;bottom:0;right:0;
+        border-left:none;border-top:1px solid rgba(255,255,255,0.07);
+        border-radius:20px 20px 0 0;
+        transform:translateY(100%)
+      }
+      #panel.open{transform:translateY(0)}
+      #panel::before{
+        content:'';display:block;width:36px;height:4px;
+        background:rgba(255,255,255,0.15);border-radius:2px;
+        margin:10px auto 0;flex-shrink:0
+      }
+
+      #loading{
+        width:100%;height:72vh;
+        top:auto;bottom:0;right:0;
+        border-left:none;border-top:1px solid rgba(255,255,255,0.07);
+        border-radius:20px 20px 0 0;
+      }
+
+      .album-area{height:155px}
+      .city-name-big{font-size:20px}
+      .pb{padding:14px 18px}
+    }
+  </style>
+</head>
+<body>
+
+<div id="title-chip">
+  <div id="logo-row">
+    <!-- PULSE Logo SVG: heartbeat line + music note -->
+    <svg id="pulse-logo-icon" viewBox="0 0 48 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="lg" x1="0" y1="0" x2="48" y2="0" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#a78bfa"/>
+          <stop offset="50%" stop-color="#60a5fa"/>
+          <stop offset="100%" stop-color="#f472b6"/>
+        </linearGradient>
+      </defs>
+      <!-- EKG / heartbeat pulse line -->
+      <polyline points="0,15 6,15 9,4 12,26 15,8 18,20 21,15 29,15"
+        stroke="url(#lg)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      <!-- Music note stem + flag -->
+      <circle cx="37" cy="22" r="3.5" fill="url(#lg)"/>
+      <line x1="40.5" y1="22" x2="40.5" y2="10" stroke="url(#lg)" stroke-width="2" stroke-linecap="round"/>
+      <path d="M40.5,10 Q47,8 46,13" stroke="url(#lg)" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+      <!-- Small second note -->
+      <circle cx="33" cy="26" r="2.2" fill="url(#lg)" opacity="0.55"/>
+      <line x1="35.2" y1="26" x2="35.2" y2="17" stroke="url(#lg)" stroke-width="1.5" stroke-linecap="round" opacity="0.55"/>
+    </svg>
+    <h1>PULSE</h1>
+  </div>
+  <p>Every city has a heartbeat</p>
+  <div id="global-stats">
+    <span id="stat-stations">loading…</span>
+    <span class="stat-sep">·</span>
+    <span id="stat-countries">—</span>
+    <span class="stat-sep">·</span>
+    <span id="stat-clicks">—</span>
+  </div>
+</div>
+
+<div id="search-wrap">
+  <input id="search-input" type="text" placeholder="🔍  Search any city in the world..." autocomplete="off" />
+  <div id="search-results"></div>
+</div>
+
+<div id="hint">✦ Click any city · filter by mood below · or search above</div>
+<div id="map"></div>
+<div id="map-vignette"></div>
+
+<!-- Mood filter bar -->
+<div id="mood-filter">
+  <button class="mf-btn active" onclick="filterMood(null)" style="color:rgba(255,255,255,0.7)">🌍 All Cities</button>
+  <div class="mf-sep"></div>
+  <div id="mf-pills"></div>
+</div>
+
+<!-- Dancing monkey — appears when music plays -->
+<div id="monkey-stage">
+  <div class="mk-scene">
+    <span class="mk-note mk-note-1">♪</span>
+    <span class="mk-note mk-note-2">♫</span>
+    <span class="mk-note mk-note-3">♩</span>
+    <div class="mk-arm mk-arm-l"></div>
+    <div class="mk-body">
+      <span class="mk-head">🐵</span>
+      <div class="mk-torso"></div>
+      <div class="mk-legs">
+        <div class="mk-leg mk-leg-l"></div>
+        <div class="mk-leg mk-leg-r"></div>
+      </div>
+    </div>
+    <div class="mk-arm mk-arm-r"></div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <div class="loading-label" id="loading-label">Tuning in…</div>
+</div>
+
+<div id="panel">
+  <!-- Album / mood art area -->
+  <div class="album-area" id="album-area">
+    <div class="city-bg-photo" id="city-bg-photo"></div>
+    <div class="city-blur-dark"></div>
+    <div class="city-mood-overlay" id="city-mood-overlay"></div>
+    <button class="close-btn" onclick="closePanel()">✕</button>
+    <div class="album-content">
+      <div class="mood-pill" id="mood-pill">— VIBE</div>
+      <div class="city-name-big" id="city-big">—</div>
+      <div class="country-line">
+        <span class="cf" id="cf">🌍</span>
+        <span id="country-line-text">—</span>
+      </div>
+      <div class="waveform hidden" id="waveform">
+        <div class="wbar"></div><div class="wbar"></div><div class="wbar"></div>
+        <div class="wbar"></div><div class="wbar"></div><div class="wbar"></div>
+        <div class="wbar"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="pb">
+    <div class="city-moment-card" id="city-moment">—</div>
+
+    <!-- Why this mood? -->
+    <div class="why-mood-card" id="why-mood-card">
+      <div class="why-top-row">
+        <span class="why-title">⚡ Why this mood?</span>
+        <span>
+          <span class="why-mood-name" id="why-mood-name">—</span>
+          <span class="why-refined-badge" id="why-refined-badge" style="display:none">REFINED</span>
+        </span>
+      </div>
+      <div class="why-reasons" id="why-reasons"></div>
+      <div class="why-energy-row">
+        <span class="why-energy-label">Energy</span>
+        <div class="why-energy-track"><div class="why-energy-fill" id="why-energy-fill"></div></div>
+        <span class="why-energy-pct" id="why-energy-pct">—</span>
+      </div>
+    </div>
+
+    <div class="fact-card" id="fact-card">
+      <div class="fact-label">✦ City Fact</div>
+      <div class="fact-text" id="fact-text">—</div>
+    </div>
+
+    <div class="info-grid">
+      <div class="ic">
+        <div class="ic-label">Local Time</div>
+        <div class="ic-value clock" id="clock">--:--</div>
+        <div class="ic-sub" id="clock-date">—</div>
+      </div>
+      <div class="ic">
+        <div class="ic-label">Weather</div>
+        <div class="ic-value" id="wx-val">—</div>
+        <div class="ic-sub" id="wx-desc">—</div>
+      </div>
+      <div class="ic">
+        <div class="ic-label">Language</div>
+        <div class="ic-value" id="lang-val" style="font-size:13px">—</div>
+      </div>
+      <div class="ic">
+        <div class="ic-label">Bitrate</div>
+        <div class="ic-value" id="bitrate-val" style="font-size:15px">—</div>
+        <div class="ic-sub">kbps</div>
+      </div>
+    </div>
+
+    <div class="sec-label">Genre</div>
+    <div class="tags" id="tags"></div>
+
+    <div class="player">
+      <div class="ps-row">
+        <div class="ps-status">
+          <div class="live-dot"></div>
+          <span id="ps-text">Live Radio</span>
+        </div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.22);text-align:right;line-height:1.4" id="stn-counter"></div>
+      </div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:12px;color:#fff" id="stn-name-main">—</div>
+      <div class="controls">
+        <button class="btn-play" id="btn-play" onclick="togglePlay()">▶</button>
+        <button class="btn-next" onclick="nextStation()">⟳  Next station</button>
+      </div>
+      <div class="vol-row">
+        <span class="vol-icon" id="vol-icon" onclick="toggleMute()">🔊</span>
+        <input type="range" class="vol-slider" id="vol-slider" min="0" max="1" step="0.02" value="1" oninput="setVolume(this.value)" />
+      </div>
+    </div>
+
+    <button class="btn-share" onclick="shareLinkedIn()">
+      <svg viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+      Share on LinkedIn
+    </button>
+
+    <!-- ── WORLD POSTCARDS — moved above stations so it's visible ── -->
+    <div class="postcards-section" id="postcards-section" style="display:none">
+      <div class="postcards-header">
+        <div class="postcards-title">✉ World Postcards</div>
+        <button class="btn-write" onclick="togglePostForm()">+ Write</button>
+      </div>
+
+      <div class="postcard-form" id="postcard-form">
+        <div class="guidelines-box">
+          <strong>Community Guidelines</strong>
+          Be kind. No hate speech, slurs, threats, or spam. No personal info or URLs.
+          Messages are public and visible to everyone who visits this city.
+          Violations are removed — repeat offenders are blocked.
+        </div>
+        <label class="anon-toggle" style="margin-bottom:10px">
+          <input type="checkbox" id="anon-check" onchange="toggleAnon(this)" />
+          Post anonymously
+        </label>
+        <input class="pc-input" id="pc-name" type="text" placeholder="Your name (optional)" maxlength="30" />
+        <textarea class="pc-textarea" id="pc-msg" placeholder="Leave a message for this city… say hi, share a memory, send good vibes ✨" maxlength="280" oninput="updateCharCount()"></textarea>
+        <div class="pc-footer">
+          <span class="pc-chars" id="pc-chars">280 left</span>
+          <button class="btn-post" id="btn-post" onclick="submitPost()">📨 Post</button>
+        </div>
+      </div>
+
+      <div id="pc-list"></div>
+    </div>
+
+    <!-- Stations collapsed below postcards -->
+    <div class="stn-header" style="margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.06)">
+      <div class="sec-label" style="margin-bottom:0">Stations in this country</div>
+      <div class="stn-count-badge" id="stn-count-badge" style="display:none"></div>
+    </div>
+    <div id="stn-list"></div>
+    <button id="btn-show-all-stn" onclick="showAllStations()" style="display:none;width:100%;margin-top:8px;padding:9px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;color:rgba(255,255,255,0.4);font-size:11px;font-family:Inter,sans-serif;cursor:pointer">Show all stations ▾</button>
+  </div>
+</div>
+
+<audio id="audio" preload="none"></audio>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  ⚡ PULSE — Mood Engine + Live Radio
+//  Created by Sayantani Roy, March 2026
+//  Patent pending: Real-Time Urban Mood-Radio Matching
+// ═══════════════════════════════════════════════════════
+
+const LANGS={AF:'Afrikaans',AM:'Amharic',AR:'Arabic',AZ:'Azerbaijani',BE:'French/Dutch',BG:'Bulgarian',BN:'Bengali',BR:'Portuguese',BS:'Bosnian',BY:'Belarusian',CA:'Catalan',CH:'German/French/Italian',CN:'Mandarin',CS:'Czech',CY:'Welsh',DA:'Danish',DE:'German',DZ:'Arabic',EE:'Estonian',EG:'Arabic',EL:'Greek',EN:'English',ES:'Spanish',ET:'Estonian',FA:'Persian',FI:'Finnish',FR:'French',GA:'Irish',GE:'Georgian',GL:'Galician',GU:'Gujarati',HE:'Hebrew',HI:'Hindi',HR:'Croatian',HU:'Hungarian',HY:'Armenian',ID:'Indonesian',IL:'Hebrew',IN:'Hindi/English',IQ:'Arabic',IR:'Persian',IS:'Icelandic',IT:'Italian',JA:'Japanese',JP:'Japanese',KA:'Georgian',KE:'Swahili',KK:'Kazakh',KM:'Khmer',KN:'Kannada',KO:'Korean',KR:'Korean',KY:'Kyrgyz',LO:'Lao',LT:'Lithuanian',LV:'Latvian',MK:'Macedonian',ML:'Malayalam',MN:'Mongolian',MR:'Marathi',MS:'Malay',MT:'Maltese',MX:'Spanish',MY:'Burmese',NG:'English/Hausa',NL:'Dutch',NO:'Norwegian',NP:'Nepali',NZ:'English',PA:'Punjabi',PH:'Filipino',PK:'Urdu',PL:'Polish',PS:'Pashto',PT:'Portuguese',RO:'Romanian',RS:'Serbian',RU:'Russian',SA:'Arabic',SE:'Swedish',SI:'Sinhala',SK:'Slovak',SL:'Slovenian',SO:'Somali',SQ:'Albanian',SR:'Serbian',SV:'Swedish',SW:'Swahili',SY:'Arabic',TA:'Tamil',TH:'Thai',TJ:'Tajik',TK:'Turkmen',TL:'Filipino',TR:'Turkish',TT:'Tatar',TW:'Mandarin',UA:'Ukrainian',UG:'Uyghur',UK:'Ukrainian',UR:'Urdu',US:'English',UZ:'Uzbek',VN:'Vietnamese',YE:'Arabic',ZA:'Zulu/Xhosa',ZH:'Mandarin',ZW:'Shona/English'};
+
+const WX={0:{d:'Clear sky',i:'☀️',w:'sunny'},1:{d:'Mostly clear',i:'🌤️',w:'sunny'},2:{d:'Partly cloudy',i:'⛅',w:'cloudy'},3:{d:'Overcast',i:'☁️',w:'cloudy'},45:{d:'Foggy',i:'🌫️',w:'cloudy'},48:{d:'Icy fog',i:'🌫️',w:'snowy'},51:{d:'Light drizzle',i:'🌦️',w:'rainy'},53:{d:'Drizzle',i:'🌦️',w:'rainy'},55:{d:'Heavy drizzle',i:'🌧️',w:'rainy'},61:{d:'Light rain',i:'🌧️',w:'rainy'},63:{d:'Rain',i:'🌧️',w:'rainy'},65:{d:'Heavy rain',i:'🌧️',w:'rainy'},71:{d:'Light snow',i:'🌨️',w:'snowy'},73:{d:'Snow',i:'❄️',w:'snowy'},75:{d:'Heavy snow',i:'❄️',w:'snowy'},80:{d:'Showers',i:'🌦️',w:'rainy'},81:{d:'Showers',i:'🌧️',w:'rainy'},82:{d:'Heavy showers',i:'⛈️',w:'stormy'},95:{d:'Thunderstorm',i:'⛈️',w:'stormy'},96:{d:'Storm+hail',i:'⛈️',w:'stormy'},99:{d:'Heavy storm',i:'⛈️',w:'stormy'}};
+
+const MOOD_MATRIX={morning:{sunny:'ENERGETIC',cloudy:'CALM',rainy:'COZY',snowy:'DREAMY',stormy:'RAW'},work_morning:{sunny:'FOCUSED',cloudy:'FOCUSED',rainy:'FOCUSED',snowy:'FOCUSED',stormy:'FOCUSED'},lunch:{sunny:'VIBRANT',cloudy:'CHILL',rainy:'COZY',snowy:'COZY',stormy:'MELLOW'},afternoon:{sunny:'VIBRANT',cloudy:'MELLOW',rainy:'MELLOW',snowy:'DREAMY',stormy:'INTENSE'},evening:{sunny:'VIBRANT',cloudy:'SOCIAL',rainy:'MOODY',snowy:'ROMANTIC',stormy:'ELECTRIC'},night:{sunny:'SOCIAL',cloudy:'CHILL',rainy:'MOODY',snowy:'INTIMATE',stormy:'ELECTRIC'},late_night:{sunny:'DEEP',cloudy:'DEEP',rainy:'ETHEREAL',snowy:'ETHEREAL',stormy:'RAW'}};
+
+const MOOD_THEMES={
+  ENERGETIC:{bg1:'#f97316',bg2:'#ea580c',accent:'#fb923c',glow:'rgba(249,115,22,0.5)',emoji:'🔥',desc:'Full energy. The city is wide awake.'},
+  CALM:{bg1:'#059669',bg2:'#047857',accent:'#34d399',glow:'rgba(5,150,105,0.5)',emoji:'🌿',desc:'Slow and easy. The morning is just starting.'},
+  COZY:{bg1:'#b45309',bg2:'#92400e',accent:'#fbbf24',glow:'rgba(180,83,9,0.5)',emoji:'☕',desc:'Warm inside. Something good is brewing.'},
+  DREAMY:{bg1:'#4f46e5',bg2:'#3730a3',accent:'#818cf8',glow:'rgba(79,70,229,0.5)',emoji:'❄️',desc:'Hushed and soft. The world has gone quiet.'},
+  FOCUSED:{bg1:'#1d4ed8',bg2:'#1e40af',accent:'#60a5fa',glow:'rgba(29,78,216,0.5)',emoji:'💙',desc:'Heads down. This city is getting things done.'},
+  VIBRANT:{bg1:'#7c3aed',bg2:'#6d28d9',accent:'#a78bfa',glow:'rgba(124,58,237,0.5)',emoji:'🌟',desc:'Alive and loud. Good things are happening here.'},
+  SOCIAL:{bg1:'#be185d',bg2:'#9d174d',accent:'#f472b6',glow:'rgba(190,24,93,0.5)',emoji:'✨',desc:'Streets are full. Tonight is for people.'},
+  MELLOW:{bg1:'#4d7c0f',bg2:'#3f6212',accent:'#a3e635',glow:'rgba(77,124,15,0.4)',emoji:'🍃',desc:'Low-key. Nobody is rushing anywhere.'},
+  MOODY:{bg1:'#334155',bg2:'#1e293b',accent:'#94a3b8',glow:'rgba(51,65,85,0.5)',emoji:'🌧️',desc:'Rain on the windows. This one has depth.'},
+  ROMANTIC:{bg1:'#be123c',bg2:'#9f1239',accent:'#fb7185',glow:'rgba(190,18,60,0.5)',emoji:'🌹',desc:'Quiet streets. Something is in the air.'},
+  INTIMATE:{bg1:'#6d28d9',bg2:'#5b21b6',accent:'#c084fc',glow:'rgba(109,40,217,0.5)',emoji:'🕯️',desc:'Still and close. The world narrows tonight.'},
+  ELECTRIC:{bg1:'#a16207',bg2:'#854d0e',accent:'#fde047',glow:'rgba(161,98,7,0.5)',emoji:'⚡',desc:'Storm energy. Something wild is in the air.'},
+  INTENSE:{bg1:'#b91c1c',bg2:'#991b1b',accent:'#f87171',glow:'rgba(185,28,28,0.5)',emoji:'🌪️',desc:'Charged and heavy. Not a day to ignore.'},
+  DEEP:{bg1:'#0f172a',bg2:'#020617',accent:'#64748b',glow:'rgba(15,23,42,0.8)',emoji:'🌃',desc:"Past midnight. The city belongs to a different crowd."},
+  ETHEREAL:{bg1:'#1e1b4b',bg2:'#1e1b4b',accent:'#a5b4fc',glow:'rgba(30,27,75,0.6)',emoji:'🌌',desc:'Between sleep and sky. The rare quiet hours.'},
+  RAW:{bg1:'#7f1d1d',bg2:'#450a0a',accent:'#fca5a5',glow:'rgba(127,29,29,0.5)',emoji:'🌩️',desc:'Unfiltered. Weather and sound stripped bare.'},
+  CHILL:{bg1:'#0e7490',bg2:'#0c4a6e',accent:'#67e8f9',glow:'rgba(14,116,144,0.5)',emoji:'🌊',desc:'Laid back. No hurry, no worry.'}
+};
+
+const SERVERS=['de1.api.radio-browser.info','at1.api.radio-browser.info','nl1.api.radio-browser.info'];
+
+const HOTSPOTS=[
+  {lat:40.71,lon:-74.01,city:'New York',cc:'US',color:'#f97316'},
+  {lat:51.51,lon:-0.13,city:'London',cc:'GB',color:'#60a5fa'},
+  {lat:48.85,lon:2.35,city:'Paris',cc:'FR',color:'#f472b6'},
+  {lat:35.68,lon:139.69,city:'Tokyo',cc:'JP',color:'#a78bfa'},
+  {lat:19.07,lon:72.87,city:'Mumbai',cc:'IN',color:'#fbbf24'},
+  {lat:-23.55,lon:-46.63,city:'São Paulo',cc:'BR',color:'#34d399'},
+  {lat:55.75,lon:37.62,city:'Moscow',cc:'RU',color:'#94a3b8'},
+  {lat:-33.87,lon:151.21,city:'Sydney',cc:'AU',color:'#fb7185'},
+  {lat:30.04,lon:31.24,city:'Cairo',cc:'EG',color:'#fde047'},
+  {lat:1.35,lon:103.82,city:'Singapore',cc:'SG',color:'#4ade80'},
+  {lat:-26.2,lon:28.04,city:'Johannesburg',cc:'ZA',color:'#f59e0b'},
+  {lat:37.57,lon:126.98,city:'Seoul',cc:'KR',color:'#c084fc'},
+  {lat:41.01,lon:28.97,city:'Istanbul',cc:'TR',color:'#fb923c'},
+  {lat:52.52,lon:13.40,city:'Berlin',cc:'DE',color:'#60a5fa'},
+  {lat:-34.60,lon:-58.38,city:'Buenos Aires',cc:'AR',color:'#a3e635'},
+  {lat:34.05,lon:-118.24,city:'Los Angeles',cc:'US',color:'#fb923c'},
+  {lat:43.65,lon:-79.38,city:'Toronto',cc:'CA',color:'#f43f5e'},
+  {lat:19.43,lon:-99.13,city:'Mexico City',cc:'MX',color:'#10b981'},
+  {lat:4.71,lon:-74.07,city:'Bogotá',cc:'CO',color:'#facc15'},
+  {lat:33.57,lon:-7.59,city:'Casablanca',cc:'MA',color:'#38bdf8'},
+  {lat:6.45,lon:3.39,city:'Lagos',cc:'NG',color:'#84cc16'},
+  {lat:-4.32,lon:15.32,city:'Kinshasa',cc:'CD',color:'#e879f9'},
+  {lat:3.85,lon:11.52,city:'Yaoundé',cc:'CM',color:'#f97316'},
+  {lat:14.69,lon:-17.44,city:'Dakar',cc:'SN',color:'#06b6d4'},
+  {lat:59.33,lon:18.07,city:'Stockholm',cc:'SE',color:'#a78bfa'},
+  {lat:52.37,lon:4.90,city:'Amsterdam',cc:'NL',color:'#fb7185'},
+  {lat:48.21,lon:16.37,city:'Vienna',cc:'AT',color:'#fbbf24'},
+  {lat:41.39,lon:2.16,city:'Barcelona',cc:'ES',color:'#34d399'},
+  {lat:45.46,lon:9.19,city:'Milan',cc:'IT',color:'#60a5fa'},
+  {lat:50.45,lon:30.52,city:'Kyiv',cc:'UA',color:'#fde047'},
+  {lat:28.61,lon:77.21,city:'New Delhi',cc:'IN',color:'#f472b6'},
+  {lat:31.23,lon:121.47,city:'Shanghai',cc:'CN',color:'#4ade80'},
+  {lat:13.75,lon:100.52,city:'Bangkok',cc:'TH',color:'#fb923c'},
+  {lat:3.14,lon:101.69,city:'Kuala Lumpur',cc:'MY',color:'#c084fc'},
+  {lat:-6.21,lon:106.85,city:'Jakarta',cc:'ID',color:'#94a3b8'},
+  {lat:14.69,lon:17.44,city:'N\'Djamena',cc:'TD',color:'#f59e0b'},
+];
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let mapObj,markerObj,rippleMarker,popupObj;
+let stations=[],currentIdx=0,isPlaying=false,clockTick=null,skipCount=0;
+let currentMood='VIBRANT',currentCityData={};
+
+// ── MAP ───────────────────────────────────────────────────────────────────────
+mapObj=L.map('map',{center:[20,0],zoom:3,zoomControl:false,attributionControl:false});
+
+// Voyager (country colors) with CSS invert → dark mode countries
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png',{
+  subdomains:'abcd',maxZoom:19,className:'country-layer'
+}).addTo(mapObj);
+// Dark labels on top
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png',{
+  subdomains:'abcd',maxZoom:19,opacity:0.9
+}).addTo(mapObj);
+
+L.control.zoom({position:'bottomright'}).addTo(mapObj);
+
+// Hotspot cities — store dot elements for mood filter
+const hotspotDots=[];
+HOTSPOTS.forEach((h,i)=>{
+  const delay=(i*0.17)%2.5;
+  // Estimate local mood using longitude-based UTC offset (no API needed)
+  const utcOffSec=Math.round(h.lon/15)*3600;
+  const isWeekend=[0,6].includes(new Date().getDay());
+  const mood=computeMood(utcOffSec,0,isWeekend); // weather=0 (clear) as baseline
+  h.mood=mood;
+  const icon=L.divIcon({
+    html:`<div style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer">
+      <div class="hs-dot" id="hsdot-${i}" style="background:${h.color};color:${h.color};animation-delay:${delay}s"></div>
+    </div>`,
+    className:'',iconSize:[44,44],iconAnchor:[22,22]
+  });
+  const marker=L.marker([h.lat,h.lon],{icon})
+    .addTo(mapObj)
+    .bindTooltip(`${h.city} · ${mood}`,{permanent:true,className:'hs-label',direction:'top',offset:[0,-10]})
+    .on('click',(e)=>{L.DomEvent.stopPropagation(e);lastMarkerClick=Date.now();onMapClick(h.lat,h.lon,h.city,h.cc);});
+  hotspotDots.push({h,marker,idx:i});
+});
+buildMoodFilterPills();
+
+let lastMarkerClick=0;
+mapObj.on('click',e=>{
+  if(Date.now()-lastMarkerClick<350)return; // swallow ghost click after marker tap
+  onMapClick(e.latlng.lat,e.latlng.lng);
+});
+
+// ── CLICK HANDLER ─────────────────────────────────────────────────────────────
+async function onMapClick(lat,lon,knownCity,knownCC){
+  showLoading(true,'Reading the city…');
+  stopAudio();
+  dropRipple(lat,lon);
+  document.getElementById('hint').style.opacity='0';
+
+  // Show immediate popup at click point
+  if(popupObj)mapObj.closePopup();
+  popupObj=L.popup({closeButton:true,offset:[0,-8],maxWidth:220})
+    .setLatLng([lat,lon])
+    .setContent(`<div class="pop-card"><div class="pop-city">📍 Finding location…</div></div>`)
+    .openOn(mapObj);
+
+  try{
+    setLoadingLabel('Looking up location…');
+    let cc,city,country;
+
+    if(knownCity&&knownCC){
+      city=knownCity; cc=knownCC.toUpperCase(); country=knownCity;
+    } else {
+      const geo=await fetchGeo(lat,lon);
+      cc=(geo.countryCode||'').toUpperCase();
+      city=geo.city||geo.country||'Unknown location';
+      country=geo.country||cc;
+    }
+
+    // If still no country code (ocean click), show message
+    if(!cc||cc.length!==2){
+      if(popupObj)popupObj.setContent(`<div class="pop-card"><div class="pop-city">🌊 Ocean</div><div class="pop-meta">Click on a country or city</div></div>`);
+      showLoading(false);
+      return;
+    }
+
+    setLoadingLabel('Checking the weather…');
+    const wx=await fetchWeather(lat,lon);
+
+    // Mood computation
+    const utcOff=wx?.utc_offset_seconds??0;
+    const localNow=new Date(Date.now()+new Date().getTimezoneOffset()*60000+utcOff*1000);
+    const isWeekend=[0,6].includes(localNow.getDay());
+    currentMood=computeMood(utcOff,wx?.weathercode??0,isWeekend);
+    const theme=MOOD_THEMES[currentMood]||MOOD_THEMES.VIBRANT;
+
+    // Store for share
+    currentCityData={city,country,cc,mood:currentMood,
+      time:`${String(localNow.getHours()).padStart(2,'0')}:${String(localNow.getMinutes()).padStart(2,'0')}`,
+      wx:wx?`${Math.round(wx.temperature_2m)}°C`:''};
+
+    // Update popup
+    popupObj.setContent(`<div class="pop-card">
+      <div class="pop-city">${flag(cc)} ${city}</div>
+      <div class="pop-meta"><span>${country}</span><span>·</span><span>${lat.toFixed(1)}°, ${lon.toFixed(1)}°</span></div>
+      <div class="pop-mood" style="background:${theme.bg1}22;border:1px solid ${theme.bg1}44;color:${theme.accent}">${theme.emoji} ${currentMood}</div>
+    </div>`);
+
+    // Apply theme
+    applyTheme(theme,currentMood);
+
+    // Fill panel
+    document.getElementById('city-big').textContent=city;
+    document.getElementById('cf').textContent=flag(cc);
+    document.getElementById('country-line-text').textContent=country;
+    document.getElementById('lang-val').textContent=LANGS[cc]||'Local language';
+    if(wx){
+      const w=WX[wx.weathercode]||{d:'—',i:'🌡️'};
+      document.getElementById('wx-val').textContent=`${w.i} ${Math.round(wx.temperature_2m)}°C`;
+      document.getElementById('wx-desc').textContent=w.d;
+    }
+    document.getElementById('city-moment').textContent=buildMoment(city,currentMood,localNow.getHours(),wx?.weathercode??0);
+
+    // City fun fact (async, non-blocking)
+    // Reset why-mood card
+    const whyCard=document.getElementById('why-mood-card');
+    whyCard.classList.remove('visible');whyCard.style.display='none';
+
+    // Reset city photo (will cross-fade in once Wikipedia image loads)
+    const photo=document.getElementById('city-bg-photo');
+    if(photo){photo.classList.remove('loaded');photo.style.backgroundImage='none';}
+
+    const factCard=document.getElementById('fact-card');
+    const factEl=document.getElementById('fact-text');
+    factCard.style.display='none';
+    factCard.classList.remove('visible');
+    fetchCityFact(city).then(fact=>{
+      if(fact){
+        factEl.textContent=fact;
+        factCard.style.display='block';
+        // Trigger animation on next frame
+        requestAnimationFrame(()=>factCard.classList.add('visible'));
+      }
+    });
+
+    startClock(utcOff);
+
+    // ── Show base mood immediately ──────────────────────────────────────────
+    const baseMood=currentMood;
+    const wxDesc=wx?(WX[wx.weathercode]||{d:'clear sky'}).d:'clear sky';
+    const timeSlotLabel=localNow.getHours()<12?'morning':localNow.getHours()<18?'afternoon':localNow.getHours()<21?'evening':'night';
+    showWhyMood({
+      baseMood,
+      baseDesc:`${isWeekend?'Weekend':'Weekday'} ${timeSlotLabel} · ${wxDesc}`,
+      refined:false
+    });
+
+    setLoadingLabel('Finding radio stations…');
+    const t0=Date.now();
+    stations=await fetchStations(cc);
+    const fetchMs=Date.now()-t0;
+    skipCount=0;
+    document.getElementById('stn-counter').innerHTML=`📡 Radio Browser API · ${fetchMs}ms`;
+
+    if(!stations.length){
+      setLoadingLabel('Trying nearby stations…');
+      stations=await fetchFallbackStations();
+      if(stations.length){
+        currentIdx=0; await playStation(0); renderList();
+        document.getElementById('stn-counter').innerHTML=`📡 Global top stations · ${country} not yet indexed`;
+      } else { noStations(); }
+    } else { currentIdx=0; await playStation(0); renderList(); }
+
+    // ── Refine mood after stations load (smooth transition) ────────────────
+    const genreResult=getGenreEnergy(stations);
+    const refineResult=refineMood(baseMood,genreResult,isWeekend);
+    if(refineResult&&refineResult.mood!==baseMood){
+      // Store both
+      currentMood=refineResult.mood;
+      currentCityData.baseMood=baseMood;
+      currentCityData.refinedMood=refineResult.mood;
+      currentCityData.mood=refineResult.mood;
+      // Smooth theme transition after 400ms (feels deliberate, not jarring)
+      setTimeout(()=>{
+        const newTheme=MOOD_THEMES[refineResult.mood]||MOOD_THEMES.VIBRANT;
+        applyTheme(newTheme,refineResult.mood);
+        document.getElementById('city-moment').textContent=
+          buildMoment(city,refineResult.mood,localNow.getHours(),wx?.weathercode??0);
+      },400);
+      showWhyMood({
+        baseMood,
+        baseDesc:`${isWeekend?'Weekend':'Weekday'} ${timeSlotLabel} · ${wxDesc}`,
+        refined:true,
+        refinedMood:refineResult.mood,
+        genres:refineResult.topGenres,
+        genreScore:refineResult.genreScore,
+        energy:refineResult.blendedEnergy
+      });
+    } else {
+      // No change — still show the why card with base info
+      currentCityData.baseMood=baseMood;
+      currentCityData.refinedMood=null;
+      showWhyMood({
+        baseMood,
+        baseDesc:`${isWeekend?'Weekend':'Weekday'} ${timeSlotLabel} · ${wxDesc}`,
+        refined:false,
+        genres:genreResult?.genres,
+        genreScore:genreResult?.score,
+        energy:MOOD_ENERGY[baseMood]??0.52
+      });
+    }
+
+    openPostcards(cc,city);
+    showPanel();
+    setTimeout(()=>{if(popupObj)mapObj.closePopup();},3000);
+
+  }catch(e){
+    console.error(e);
+    noStations();
+    showPanel();
+  } finally {
+    showLoading(false);
+  }
+}
+
+// ── MOOD ENGINE v1 — base mood (time + weather + day) ─────────────────────────
+function computeMood(utcOffSec,wxCode,isWeekend){
+  const local=new Date(Date.now()+new Date().getTimezoneOffset()*60000+utcOffSec*1000);
+  const h=local.getHours();
+  const wx=WX[wxCode]?.w||'sunny';
+  let slot=h>=5&&h<9?'morning':h>=9&&h<12?'work_morning':h>=12&&h<14?'lunch':h>=14&&h<18?'afternoon':h>=18&&h<21?'evening':h>=21?'night':'late_night';
+  let mood=MOOD_MATRIX[slot]?.[wx]||'CHILL';
+  if(isWeekend){const b={FOCUSED:'VIBRANT',CALM:'SOCIAL',MELLOW:'SOCIAL',COZY:'VIBRANT'};if(b[mood])mood=b[mood];}
+  return mood;
+}
+
+// ── MOOD ENGINE v2 — genre refinement (runs after stations load) ──────────────
+
+// Each mood mapped to an energy level 0–1
+const MOOD_ENERGY={
+  DEEP:0.10,ETHEREAL:0.18,INTIMATE:0.22,DREAMY:0.25,
+  ROMANTIC:0.30,MOODY:0.32,COZY:0.38,CALM:0.42,
+  MELLOW:0.44,FOCUSED:0.52,CHILL:0.56,
+  SOCIAL:0.65,VIBRANT:0.72,ELECTRIC:0.82,
+  ENERGETIC:0.88,INTENSE:0.90,RAW:0.85
+};
+
+// Genre → energy score
+const GENRE_ENERGY={
+  electronic:1.0,techno:1.0,dance:0.95,edm:0.95,
+  'hip-hop':0.90,hiphop:0.90,rock:0.85,metal:0.90,
+  pop:0.75,latin:0.75,reggaeton:0.80,bollywood:0.72,
+  indie:0.65,rnb:0.65,'r&b':0.65,soul:0.62,funk:0.70,
+  reggae:0.60,country:0.55,jazz:0.50,blues:0.50,
+  classical:0.30,acoustic:0.35,folk:0.35,ambient:0.20,
+  lounge:0.35,meditation:0.10,news:0.22,talk:0.20,religion:0.15
+};
+
+function getGenreEnergy(stations){
+  if(!stations||!stations.length) return null;
+  let total=0,count=0,found=[];
+  stations.slice(0,8).forEach(s=>{
+    (s.tags||'').toLowerCase().split(',').forEach(t=>{
+      const key=t.trim();
+      if(GENRE_ENERGY[key]!==undefined&&!found.includes(key)){
+        total+=GENRE_ENERGY[key];count++;found.push(key);
+      }
+    });
+  });
+  if(!count) return null;
+  return {score:Math.round((total/count)*100)/100, genres:found.slice(0,4)};
+}
+
+// Energy level → mood name (picks weekend variant if applicable)
+function energyToMood(energy,isWeekend){
+  if(energy>=0.86) return isWeekend?'ELECTRIC':'ENERGETIC';
+  if(energy>=0.70) return isWeekend?'SOCIAL':'VIBRANT';
+  if(energy>=0.54) return isWeekend?'CHILL':'FOCUSED';
+  if(energy>=0.40) return isWeekend?'COZY':'MELLOW';
+  if(energy>=0.26) return isWeekend?'INTIMATE':'MOODY';
+  return isWeekend?'ETHEREAL':'DEEP';
+}
+
+function refineMood(baseMood, genreResult, isWeekend){
+  if(!genreResult) return null; // no genre data — keep base
+  const baseEnergy = MOOD_ENERGY[baseMood]??0.52;
+  // Blend: 60% existing context, 40% genre signal
+  const blended = (baseEnergy*0.60) + (genreResult.score*0.40);
+  const refined  = energyToMood(blended, isWeekend);
+  return {
+    mood: refined,
+    blendedEnergy: Math.round(blended*100)/100,
+    genreScore: genreResult.score,
+    topGenres: genreResult.genres
+  };
+}
+
+function buildMoment(city,mood,hour,wxCode){
+  const theme=MOOD_THEMES[mood];
+  const w=WX[wxCode]||{d:'clear'};
+  const t=hour<5?'deep night':hour<9?'morning':hour<12?'late morning':hour<14?'lunchtime':hour<18?'afternoon':hour<21?'evening':'night';
+  return `${city} — ${t}. ${w.d}. ${theme?.desc||''}`;
+}
+
+// ── APPLY THEME ───────────────────────────────────────────────────────────────
+function applyTheme(theme,mood){
+  const aa=document.getElementById('album-area');
+  const pill=document.getElementById('mood-pill');
+  const bars=document.querySelectorAll('.wbar');
+  const play=document.getElementById('btn-play');
+  const clock=document.getElementById('clock');
+
+  // Update mood colour overlay (not the photo layer)
+  const moodOverlay=document.getElementById('city-mood-overlay');
+  if(moodOverlay)moodOverlay.style.background=
+    `linear-gradient(to bottom,${theme.bg1}99 0%,${theme.bg1}28 42%,rgba(8,8,24,0.97) 100%)`;
+  pill.style.background=theme.bg1+'33';
+  pill.style.borderColor=theme.bg1+'66';
+  pill.style.color=theme.accent;
+  pill.textContent=`${theme.emoji}  ${mood}`;
+
+  bars.forEach(b=>b.style.background=`linear-gradient(to top,${theme.bg1},${theme.accent})`);
+  play.style.background=`linear-gradient(135deg,${theme.bg1},${theme.bg2})`;
+  play.style.boxShadow=`0 4px 20px ${theme.glow}`;
+  clock.style.background=`linear-gradient(135deg,${theme.accent},${theme.bg1})`;
+  clock.style.webkitBackgroundClip='text';
+  clock.style.webkitTextFillColor='transparent';
+  document.documentElement.style.setProperty('--accent',theme.accent);
+}
+
+// ── APIS ──────────────────────────────────────────────────────────────────────
+async function fetchGeo(lat,lon){
+  const r=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`,{headers:{'Accept-Language':'en'}});
+  const d=await r.json();
+  if(d.error)return{};
+  return{
+    city:d.address?.city||d.address?.town||d.address?.village||d.address?.county||d.address?.state,
+    country:d.address?.country,
+    countryCode:d.address?.country_code
+  };
+}
+
+async function fetchWeather(lat,lon){
+  try{
+    const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weathercode&timezone=auto`);
+    const d=await r.json();
+    return{temperature_2m:d.current?.temperature_2m,weathercode:d.current?.weathercode,utc_offset_seconds:d.utc_offset_seconds??0};
+  }catch{return null;}
+}
+
+async function fetchStations(cc){
+  const srv=SERVERS[Math.floor(Math.random()*SERVERS.length)];
+  try{
+    // Try with broken hidden first (best quality)
+    const r=await fetch(`https://${srv}/json/stations/search?countrycode=${cc}&limit=30&hidebroken=true&order=votes&reverse=true`,{headers:{'User-Agent':'PULSE-App/1.0'}});
+    const d=await r.json();
+    const list=Array.isArray(d)?d.filter(s=>s.url_resolved?.startsWith('http')):[];
+    if(list.length)return list;
+    // Fallback: include all stations (some countries have very few)
+    const r2=await fetch(`https://${srv}/json/stations/search?countrycode=${cc}&limit=30&order=votes&reverse=true`,{headers:{'User-Agent':'PULSE-App/1.0'}});
+    const d2=await r2.json();
+    return Array.isArray(d2)?d2.filter(s=>s.url_resolved?.startsWith('http')):[];
+  }catch{return[];}
+}
+
+async function fetchFallbackStations(){
+  const srv=SERVERS[Math.floor(Math.random()*SERVERS.length)];
+  try{
+    const r=await fetch(`https://${srv}/json/stations/search?limit=15&hidebroken=true&order=votes&reverse=true`,{headers:{'User-Agent':'PULSE-App/1.0'}});
+    const d=await r.json();
+    return Array.isArray(d)?d.filter(s=>s.url_resolved?.startsWith('http')):[];
+  }catch{return[];}
+}
+
+async function fetchCityFact(city){
+  try{
+    const r=await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(city)}`,{headers:{'Accept':'application/json'}});
+    const d=await r.json();
+    // Apply city photo to album area if available
+    if(d.originalimage?.source||d.thumbnail?.source){
+      const img=d.originalimage?.source||d.thumbnail?.source;
+      const photo=document.getElementById('city-bg-photo');
+      if(photo){
+        photo.classList.remove('loaded');
+        photo.style.backgroundImage=`url(${img})`;
+        // Preload then cross-fade in
+        const probe=new Image();
+        probe.onload=()=>{
+          requestAnimationFrame(()=>{
+            photo.style.transition='opacity 0.85s cubic-bezier(0.16,1,0.3,1),transform 1.2s cubic-bezier(0.16,1,0.3,1)';
+            photo.classList.add('loaded');
+          });
+        };
+        probe.src=img;
+      }
+    }
+    if(d.extract&&d.type!=='disambiguation'){
+      const sentence=d.extract.match(/[^.!?]+[.!?]/)?.[0]||d.extract.slice(0,160);
+      return sentence.trim();
+    }
+  }catch{}
+  return null;
+}
+
+async function loadGlobalStats(){
+  try{
+    const r=await fetch('https://at1.api.radio-browser.info/json/stats');
+    const d=await r.json();
+    document.getElementById('stat-stations').textContent=`${(d.stations||0).toLocaleString()} live stations`;
+    document.getElementById('stat-countries').textContent=`${d.countries||0} countries`;
+    document.getElementById('stat-clicks').textContent=`${(d.clicks_last_day||0).toLocaleString()} plays today`;
+  }catch{
+    document.getElementById('stat-stations').textContent='30,000+ live stations';
+    document.getElementById('stat-countries').textContent='190+ countries';
+    document.getElementById('stat-clicks').textContent='worldwide';
+  }
+}
+loadGlobalStats();
+
+async function searchCities(q){
+  const r=await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5&featuretype=city`,{headers:{'Accept-Language':'en'}});
+  const d=await r.json();
+  return d.map(i=>({name:i.display_name.split(',')[0],full:i.display_name.split(',').slice(0,2).join(','),lat:parseFloat(i.lat),lon:parseFloat(i.lon),cc:(i.address?.country_code||'').toUpperCase()}));
+}
+
+// ── SEARCH BAR ────────────────────────────────────────────────────────────────
+let searchTimer=null;
+document.getElementById('search-input').addEventListener('input',e=>{
+  clearTimeout(searchTimer);
+  const q=e.target.value.trim();
+  if(q.length<2){document.getElementById('search-results').classList.remove('show');return;}
+  searchTimer=setTimeout(async()=>{
+    const results=await searchCities(q);
+    const el=document.getElementById('search-results');
+    el.innerHTML='';
+    if(!results.length){el.classList.remove('show');return;}
+    results.forEach(r=>{
+      const div=document.createElement('div');
+      div.className='sr-item';
+      div.innerHTML=`<div>${r.name}</div><div class="sr-sub">${r.full}</div>`;
+      div.onclick=()=>{
+        document.getElementById('search-input').value=r.name;
+        el.classList.remove('show');
+        mapObj.setView([r.lat,r.lon],6,{animate:true});
+        onMapClick(r.lat,r.lon);
+      };
+      el.appendChild(div);
+    });
+    el.classList.add('show');
+  },350);
+});
+
+document.addEventListener('click',e=>{
+  if(!e.target.closest('#search-wrap'))
+    document.getElementById('search-results').classList.remove('show');
+});
+
+// ── PLAYER ────────────────────────────────────────────────────────────────────
+async function playStation(idx){
+  const s=stations[idx];if(!s)return;
+  currentIdx=idx;
+  const audio=document.getElementById('audio');
+  document.getElementById('stn-name-main').textContent=s.name||'Unknown Station';
+  document.getElementById('ps-text').textContent='Connecting…';
+  document.getElementById('bitrate-val').textContent=s.bitrate||'—';
+  document.getElementById('stn-counter').textContent=`${idx+1} / ${stations.length}`;
+
+  const tagsEl=document.getElementById('tags');
+  tagsEl.innerHTML='';
+  const tags=(s.tags||'').split(',').map(t=>t.trim()).filter(Boolean).slice(0,5);
+  (tags.length?tags:['radio']).forEach(t=>{const el=document.createElement('span');el.className='tag';el.textContent=t;tagsEl.appendChild(el);});
+
+  audio.src=s.url_resolved;
+  audio.onerror=()=>{
+    if(skipCount<stations.length-1){
+      skipCount++;
+      playStation((currentIdx+1)%stations.length);
+    } else {
+      document.getElementById('ps-text').textContent='Streams unavailable';
+      document.getElementById('stn-name-main').textContent='Try a different city';
+      setWaveform('paused');
+    }
+  };
+  try{
+    await audio.play();
+    skipCount=0;isPlaying=true;
+    document.getElementById('btn-play').textContent='⏸';
+    document.getElementById('ps-text').textContent='Live Radio';
+    setWaveform('playing');
+    setMonkey(true);
+  }catch{
+    isPlaying=false;
+    document.getElementById('btn-play').textContent='▶';
+    document.getElementById('ps-text').textContent='Tap ▶ to play';
+    setWaveform('hidden');
+    setMonkey(false);
+  }
+  highlightList(idx);
+}
+
+function togglePlay(){
+  const audio=document.getElementById('audio');
+  if(isPlaying){
+    audio.pause();isPlaying=false;
+    document.getElementById('btn-play').textContent='▶';
+    setWaveform('paused');setMonkey(false);
+  } else {
+    audio.play().then(()=>{
+      isPlaying=true;
+      document.getElementById('btn-play').textContent='⏸';
+      setWaveform('playing');setMonkey(true);
+    }).catch(()=>nextStation());
+  }
+}
+function nextStation(){if(!stations.length)return;skipCount=0;playStation((currentIdx+1)%stations.length);}
+function stopAudio(){
+  const audio=document.getElementById('audio');
+  audio.pause();audio.src='';isPlaying=false;
+  document.getElementById('btn-play').textContent='▶';
+  setWaveform('hidden');setMonkey(false);
+}
+function setMonkey(on){
+  document.getElementById('monkey-stage').classList.toggle('active',on);
+}
+
+// ── CLOCK ─────────────────────────────────────────────────────────────────────
+function startClock(off){
+  if(clockTick)clearInterval(clockTick);
+  const tick=()=>{
+    const l=new Date(Date.now()+new Date().getTimezoneOffset()*60000+off*1000);
+    const hh=String(l.getHours()).padStart(2,'0'),mm=String(l.getMinutes()).padStart(2,'0'),ss=String(l.getSeconds()).padStart(2,'0');
+    document.getElementById('clock').textContent=`${hh}:${mm}:${ss}`;
+    document.getElementById('clock-date').textContent=l.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+  };
+  tick();clockTick=setInterval(tick,1000);
+}
+
+// ── STATION LIST ──────────────────────────────────────────────────────────────
+let showAllStn=false;
+function renderList(){
+  showAllStn=false;
+  const badge=document.getElementById('stn-count-badge');
+  badge.textContent=`${stations.length} found`;badge.style.display='block';
+  renderStationItems(5);
+  const btn=document.getElementById('btn-show-all-stn');
+  btn.style.display=stations.length>5?'block':'none';
+  btn.textContent=`Show all ${stations.length} stations ▾`;
+}
+function showAllStations(){
+  showAllStn=true;
+  renderStationItems(stations.length);
+  document.getElementById('btn-show-all-stn').style.display='none';
+}
+function renderStationItems(count){
+  const el=document.getElementById('stn-list');el.innerHTML='';
+  stations.slice(0,count).forEach((s,i)=>{
+    const tags=(s.tags||'').split(',').map(t=>t.trim()).filter(Boolean).slice(0,2);
+    const tagHtml=tags.map(t=>`<span class="stag">${t}</span>`).join('');
+    const br=s.bitrate?`${s.bitrate} kbps`:'';
+    const div=document.createElement('div');
+    div.className=`station-item${i===currentIdx?' active':''}`;
+    div.innerHTML=`<div class="sdot"></div><div class="sinfo"><div class="sname">${s.name||'Unknown Station'}</div><div class="stags">${tagHtml}</div></div><div class="sbr">${br}</div>`;
+    div.onclick=()=>{skipCount=0;playStation(i);};
+    el.appendChild(div);
+  });
+}
+function highlightList(idx){document.querySelectorAll('.station-item').forEach((el,i)=>el.classList.toggle('active',i===idx));}
+
+// ── LINKEDIN SHARE ────────────────────────────────────────────────────────────
+function shareLinkedIn(){
+  const d=currentCityData;
+  if(!d.city){showToast('Tune into a city first!');return;}
+  const theme=MOOD_THEMES[d.mood]||MOOD_THEMES.VIBRANT;
+  const stn=document.getElementById('stn-name-main').textContent;
+  const caption=`Just tuned into ${d.city}, ${d.country} live on PULSE ⚡
+
+${theme.emoji} Mood: ${d.mood}
+📻 Now playing: ${stn}
+🕐 Local time: ${d.time} · 🌡️ ${d.wx}
+
+I built a world radio app where you click anywhere on the map → instantly hear that city's live radio stream + see its real-time MOOD (calculated from local time + live weather = city vibe algorithm).
+
+No app. No backend. No API keys. One HTML file.
+
+And yes — the Mood Engine is patent pending. 🌍
+
+Try it yourself → [link in comments]
+
+#AI #BuildInPublic #Innovation #FutureOfWork #DataAnalytics #TechLeadership`;
+
+  navigator.clipboard.writeText(caption)
+    .then(()=>showToast('✓ LinkedIn caption copied! Paste it into your post.'))
+    .catch(()=>{
+      const ta=document.createElement('textarea');ta.value=caption;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);
+      showToast('✓ Caption copied to clipboard!');
+    });
+}
+
+function showToast(msg){
+  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3500);
+}
+
+// ── RIPPLE + PIN ──────────────────────────────────────────────────────────────
+let rippleTimeout;
+function dropRipple(lat,lon){
+  if(markerObj)mapObj.removeLayer(markerObj);
+  const theme=MOOD_THEMES[currentMood]||MOOD_THEMES.VIBRANT;
+
+  // Ripple
+  if(rippleMarker)mapObj.removeLayer(rippleMarker);
+  const ri=L.divIcon({html:`<div class="ripple-ring" style="border-color:${theme.accent}"></div>`,className:'',iconSize:[80,80],iconAnchor:[40,40]});
+  rippleMarker=L.marker([lat,lon],{icon:ri}).addTo(mapObj);
+  clearTimeout(rippleTimeout);
+  rippleTimeout=setTimeout(()=>{if(rippleMarker)mapObj.removeLayer(rippleMarker);},1300);
+
+  // Pin
+  const pi=L.divIcon({html:`<div class="pin-wrap"><div class="pin-ring" style="background:${theme.accent}"></div><div class="pin-core" style="background:linear-gradient(135deg,${theme.bg1},${theme.bg2})"></div></div>`,className:'',iconSize:[16,16],iconAnchor:[8,16]});
+  markerObj=L.marker([lat,lon],{icon:pi}).addTo(mapObj);
+}
+
+// ── UI HELPERS ────────────────────────────────────────────────────────────────
+function showPanel(){document.getElementById('panel').classList.add('open');}
+function closePanel(){document.getElementById('panel').classList.remove('open');stopAudio();if(clockTick)clearInterval(clockTick);}
+function showLoading(show,label){const el=document.getElementById('loading');if(show){el.classList.add('show');setLoadingLabel(label||'...');}else el.classList.remove('show');}
+function setLoadingLabel(t){document.getElementById('loading-label').textContent=t;}
+function noStations(){
+  document.getElementById('stn-name-main').textContent='No stations found';
+  document.getElementById('stn-list').innerHTML='<div class="no-stn">No radio streams found for this location.<br><br>💡 Try searching for the nearest large city — coverage is best in capital cities and major metros.</div>';
+}
+
+let preMuteVol=1;
+function setVolume(v){
+  const audio=document.getElementById('audio');
+  audio.volume=parseFloat(v);
+  document.getElementById('vol-icon').textContent=v==0?'🔇':v<0.4?'🔉':'🔊';
+}
+function toggleMute(){
+  const slider=document.getElementById('vol-slider');
+  const audio=document.getElementById('audio');
+  if(audio.volume>0){preMuteVol=audio.volume;slider.value=0;setVolume(0);}
+  else{slider.value=preMuteVol;setVolume(preMuteVol);}
+}
+function setWaveform(s){const wf=document.getElementById('waveform');wf.classList.remove('hidden','paused');if(s==='hidden')wf.classList.add('hidden');if(s==='paused')wf.classList.add('paused');}
+function flag(cc){if(!cc||cc.length!==2)return'🌍';return String.fromCodePoint(...[...cc].map(c=>127397+c.charCodeAt(0)));}
+
+// ── WORLD POSTCARDS ───────────────────────────────────────────────────────────
+
+// ── FIREBASE CONFIG — paste your DB URL here after setup ─────────────────────
+const FB_URL='https://YOUR-PROJECT-default-rtdb.firebaseio.com'; // ← replace this
+
+// Basic offensive-word filter
+const BAD_WORDS=['fuck','shit','bitch','asshole','cunt','nigger','nigga','faggot','retard','kike','spic','chink','whore','slut','bastard','dick','cock','pussy','motherfuck','kill yourself','kys','rape','terrorist','nazi'];
+function isToxic(text){
+  const t=text.toLowerCase().replace(/[^a-z0-9\s]/g,' ');
+  return BAD_WORDS.some(w=>t.includes(w));
+}
+function hasURL(text){return /https?:\/\/|www\.|\.com|\.net|\.org|\.io/i.test(text);}
+function isMostlyCaps(text){
+  const letters=text.replace(/[^a-zA-Z]/g,'');
+  if(letters.length<8)return false;
+  return (letters.replace(/[^A-Z]/g,'').length/letters.length)>0.7;
+}
+
+// Rate limit: max 3 posts per hour per browser
+function canPost(){
+  const key='pulse_post_times';
+  const now=Date.now();
+  const times=JSON.parse(localStorage.getItem(key)||'[]').filter(t=>now-t<3600000);
+  if(times.length>=3)return false;
+  times.push(now);
+  localStorage.setItem(key,JSON.stringify(times));
+  return true;
+}
+
+let currentPostCC='',currentPostCity='';
+
+function togglePostForm(){
+  document.getElementById('postcard-form').classList.toggle('open');
+}
+
+function toggleAnon(cb){
+  const nameEl=document.getElementById('pc-name');
+  nameEl.disabled=cb.checked;
+  if(cb.checked)nameEl.value='';
+}
+
+function updateCharCount(){
+  const msg=document.getElementById('pc-msg').value;
+  const left=280-msg.length;
+  const el=document.getElementById('pc-chars');
+  el.textContent=`${left} left`;
+  el.classList.toggle('warn',left<30);
+}
+
+async function submitPost(){
+  const msg=document.getElementById('pc-msg').value.trim();
+  const nameRaw=document.getElementById('pc-name').value.trim();
+  const isAnon=document.getElementById('anon-check').checked;
+  const name=isAnon?'Anonymous':nameRaw||'Anonymous';
+
+  if(msg.length<5){showToast('Message too short — say a little more 😊');return;}
+  if(msg.length>280){showToast('Keep it under 280 characters');return;}
+  if(hasURL(msg)){showToast('No links allowed — keep it personal ✨');return;}
+  if(isMostlyCaps(msg)){showToast('No all-caps messages please');return;}
+  if(isToxic(msg)||isToxic(name)){showToast('❌ That message violates our community guidelines');return;}
+  if(!canPost()){showToast("You've posted 3 times this hour — come back soon 🕐");return;}
+
+  const post={name,msg,city:currentPostCity,ts:Date.now()};
+  const btn=document.getElementById('btn-post');
+  btn.disabled=true;
+
+  const resetForm=()=>{
+    document.getElementById('pc-msg').value='';
+    document.getElementById('pc-name').value='';
+    document.getElementById('anon-check').checked=false;
+    toggleAnon({checked:false});
+    updateCharCount();
+    document.getElementById('postcard-form').classList.remove('open');
+  };
+
+  try{
+    if(USE_FIREBASE){
+      const r=await fetch(`${FB_URL}/postcards/${currentPostCC}.json`,{
+        method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(post)
+      });
+      if(!r.ok)throw new Error('Firebase error');
+    } else {
+      // localStorage fallback
+      const key=`pulse_msgs_${currentPostCC}`;
+      const posts=JSON.parse(localStorage.getItem(key)||'[]');
+      posts.unshift(post);
+      if(posts.length>50)posts.splice(50);
+      localStorage.setItem(key,JSON.stringify(posts));
+    }
+    resetForm();
+    showToast('✉ Your message has been posted!');
+    renderPosts();
+  }catch{
+    showToast('Could not post — check your connection');
+  } finally {
+    btn.disabled=false;
+  }
+}
+
+async function renderPosts(){
+  const el=document.getElementById('pc-list');
+  el.innerHTML='<div class="no-posts">Loading…</div>';
+
+  let posts=[];
+  try{
+    if(USE_FIREBASE){
+      const r=await fetch(`${FB_URL}/postcards/${currentPostCC}.json?orderBy="ts"&limitToLast=20`);
+      const data=await r.json();
+      if(data&&typeof data==='object')
+        posts=Object.values(data).sort((a,b)=>b.ts-a.ts).slice(0,15);
+    } else {
+      const key=`pulse_msgs_${currentPostCC}`;
+      posts=JSON.parse(localStorage.getItem(key)||'[]').slice(0,15);
+    }
+  }catch{}
+
+  if(!posts.length){
+    el.innerHTML=`<div class="no-posts">No messages yet for this country.<br>Be the first to say something ✨</div>`;
+    return;
+  }
+  const f=flag(currentPostCC);
+  el.innerHTML=posts.map(p=>`<div class="pc-card">
+      <div class="pc-card-header">
+        <span class="pc-author">${f} ${esc(p.name)}</span>
+        <span class="pc-time">${timeAgo(p.ts)}</span>
+      </div>
+      <div class="pc-text">${esc(p.msg)}</div>
+    </div>`).join('');
+}
+
+function timeAgo(ts){
+  const s=Math.floor((Date.now()-ts)/1000);
+  if(s<60)return'just now';
+  if(s<3600)return`${Math.floor(s/60)}m ago`;
+  if(s<86400)return`${Math.floor(s/3600)}h ago`;
+  return`${Math.floor(s/86400)}d ago`;
+}
+
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// ── WHY THIS MOOD — renders structured explanation card ──────────────────────
+function showWhyMood({baseMood,baseDesc,refined,refinedMood,genres,genreScore,energy}){
+  const card=document.getElementById('why-mood-card');
+  const badge=document.getElementById('why-refined-badge');
+  const moodNameEl=document.getElementById('why-mood-name');
+  const reasonsEl=document.getElementById('why-reasons');
+  const fillEl=document.getElementById('why-energy-fill');
+  const pctEl=document.getElementById('why-energy-pct');
+
+  const finalMood=refined&&refinedMood?refinedMood:baseMood;
+  const theme=MOOD_THEMES[finalMood]||MOOD_THEMES.VIBRANT;
+
+  // Parse "Weekday evening · clear sky" → timeSlot + weather
+  const parts=(baseDesc||'').split(' · ');
+  const dayTimePart=parts[0]||'';
+  const wxPart=parts[1]||'';
+  const timeSlot=dayTimePart.replace(/Weekend |Weekday /,'').toLowerCase().replace(' ','_')||'day';
+
+  // Build reason pills
+  const reasons=[];
+
+  // 1. Genre distribution (if stations loaded)
+  if(genres&&genres.length){
+    const pct=Math.round((genreScore||0.5)*100);
+    const genreStr=genres.slice(0,2).map(g=>`<em>${g}</em>`).join(' / ');
+    reasons.push({icon:'🎵',text:`${pct}% ${genreStr} stations detected`});
+  }
+
+  // 2. Time-of-day context
+  const TIME_LABELS={
+    morning:'Morning energy — city just waking up',
+    work:'Work-hour rhythm — focused & steady',
+    afternoon:'Afternoon session — midday pulse',
+    evening:'Evening peak — prime listening hours',
+    night:'Night mode — city winding down',
+    late_night:'Late night — low activity, deep vibes'
+  };
+  reasons.push({icon:'🕐',text:TIME_LABELS[timeSlot]||`${timeSlot.replace('_',' ')} listening pattern`});
+
+  // 3. Weather context (skip if clear/generic)
+  if(wxPart&&wxPart!=='clear sky'&&wxPart!=='mainly clear'){
+    const wx=wxPart.charAt(0).toUpperCase()+wxPart.slice(1);
+    reasons.push({icon:'🌤',text:`${wx} — shapes the city energy`});
+  }
+
+  // 4. Refinement shift (if mood changed after genre scan)
+  if(refined&&refinedMood&&refinedMood!==baseMood){
+    const dir=(MOOD_ENERGY[refinedMood]||0.5)>(MOOD_ENERGY[baseMood]||0.5)?'boosted':'softened';
+    reasons.push({icon:'⚡',text:`Genre signal ${dir} mood: <em>${baseMood}</em> → <em>${refinedMood}</em>`});
+  }
+
+  // Render mood name chip
+  moodNameEl.textContent=finalMood;
+  moodNameEl.style.color=theme.accent;
+  moodNameEl.style.borderColor=theme.accent+'55';
+  moodNameEl.style.background=theme.accent+'18';
+
+  // Refined badge
+  badge.style.display=refined?'inline':'none';
+
+  // Render reason pills
+  reasonsEl.innerHTML=reasons.map(r=>
+    `<div class="why-reason"><span class="why-reason-icon">${r.icon}</span>`+
+    `<span class="why-reason-text">${r.text}</span></div>`
+  ).join('');
+
+  // Energy bar
+  const pct=Math.round((energy??0.5)*100);
+  fillEl.style.background=`linear-gradient(90deg,${theme.bg1},${theme.accent})`;
+  pctEl.textContent=`${pct}%`;
+  requestAnimationFrame(()=>{
+    fillEl.style.width='0%';
+    setTimeout(()=>{fillEl.style.width=`${pct}%`;},50);
+  });
+
+  // Show card
+  card.style.display='block';
+  requestAnimationFrame(()=>card.classList.add('visible'));
+}
+
+// ── MOOD FILTER ───────────────────────────────────────────────────────────────
+let activeMoodFilter=null;
+
+function buildMoodFilterPills(){
+  // Count how many hotspot cities are in each mood right now
+  const counts={};
+  HOTSPOTS.forEach(h=>{if(h.mood)counts[h.mood]=(counts[h.mood]||0)+1;});
+  // Show top moods (those with ≥2 cities)
+  const sorted=Object.entries(counts).filter(([,c])=>c>=2).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const wrap=document.getElementById('mf-pills');
+  wrap.innerHTML=sorted.map(([mood,count])=>{
+    const t=MOOD_THEMES[mood]||MOOD_THEMES.VIBRANT;
+    return `<button class="mf-btn" onclick="filterMood('${mood}')"
+      style="border-color:${t.accent}22;color:${t.accent}"
+      data-mood="${mood}">${t.emoji} ${mood} <span style="opacity:0.45;font-size:9px">${count}</span></button>`;
+  }).join('');
+}
+
+function filterMood(mood){
+  activeMoodFilter=mood;
+  // Update button states
+  document.querySelectorAll('.mf-btn').forEach(b=>{
+    const bm=b.dataset.mood||null;
+    b.classList.toggle('active', bm===mood||(mood===null&&!b.dataset.mood));
+  });
+  // Update dot visibility
+  hotspotDots.forEach(({h,idx})=>{
+    const el=document.getElementById(`hsdot-${idx}`);
+    if(!el)return;
+    if(!mood){
+      el.classList.remove('dimmed','highlighted');
+    } else if(h.mood===mood){
+      el.classList.remove('dimmed');el.classList.add('highlighted');
+    } else {
+      el.classList.remove('highlighted');el.classList.add('dimmed');
+    }
+  });
+  if(mood){
+    const t=MOOD_THEMES[mood]||MOOD_THEMES.VIBRANT;
+    showToast(`${t.emoji} Showing cities in ${mood} mood right now`);
+  }
+}
+
+// ── POSTCARDS — always show, use localStorage fallback if Firebase not set up ──
+const USE_FIREBASE=!FB_URL.includes('YOUR-PROJECT');
+
+function openPostcards(cc,city){
+  currentPostCC=cc;currentPostCity=city;
+  document.getElementById('postcards-section').style.display='block';
+  document.getElementById('postcard-form').classList.remove('open');
+  renderPosts();
+}
+</script>
+</body>
+</html>

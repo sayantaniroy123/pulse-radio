@@ -837,7 +837,7 @@
 //  Patent pending: Real-Time Urban Mood-Radio Matching
 // ═══════════════════════════════════════════════════════
 
-const LANGS={AF:'Afrikaans',AM:'Amharic',AR:'Arabic',AZ:'Azerbaijani',BE:'French/Dutch',BG:'Bulgarian',BN:'Bengali',BR:'Portuguese',BS:'Bosnian',BY:'Belarusian',CA:'Catalan',CH:'German/French/Italian',CN:'Mandarin',CS:'Czech',CY:'Welsh',DA:'Danish',DE:'German',DZ:'Arabic',EE:'Estonian',EG:'Arabic',EL:'Greek',EN:'English',ES:'Spanish',ET:'Estonian',FA:'Persian',FI:'Finnish',FR:'French',GA:'Irish',GE:'Georgian',GL:'Galician',GU:'Gujarati',HE:'Hebrew',HI:'Hindi',HR:'Croatian',HU:'Hungarian',HY:'Armenian',ID:'Indonesian',IL:'Hebrew',IN:'Hindi/English',IQ:'Arabic',IR:'Persian',IS:'Icelandic',IT:'Italian',JA:'Japanese',JP:'Japanese',KA:'Georgian',KE:'Swahili',KK:'Kazakh',KM:'Khmer',KN:'Kannada',KO:'Korean',KR:'Korean',KY:'Kyrgyz',LO:'Lao',LT:'Lithuanian',LV:'Latvian',MK:'Macedonian',ML:'Malayalam',MN:'Mongolian',MR:'Marathi',MS:'Malay',MT:'Maltese',MX:'Spanish',MY:'Burmese',NG:'English/Hausa',NL:'Dutch',NO:'Norwegian',NP:'Nepali',NZ:'English',PA:'Punjabi',PH:'Filipino',PK:'Urdu',PL:'Polish',PS:'Pashto',PT:'Portuguese',RO:'Romanian',RS:'Serbian',RU:'Russian',SA:'Arabic',SE:'Swedish',SI:'Sinhala',SK:'Slovak',SL:'Slovenian',SO:'Somali',SQ:'Albanian',SR:'Serbian',SV:'Swedish',SW:'Swahili',SY:'Arabic',TA:'Tamil',TH:'Thai',TJ:'Tajik',TK:'Turkmen',TL:'Filipino',TR:'Turkish',TT:'Tatar',TW:'Mandarin',UA:'Ukrainian',UG:'Uyghur',UK:'Ukrainian',UR:'Urdu',US:'English',UZ:'Uzbek',VN:'Vietnamese',YE:'Arabic',ZA:'Zulu/Xhosa',ZH:'Mandarin',ZW:'Shona/English'};
+const LANGS={AT:'German',AU:'English',CA:'English/French',CD:'French/Lingala',CM:'French/English',CO:'Spanish',GB:'English',MA:'Arabic/French',MY:'Malay/English',SG:'English/Malay',SN:'French/Wolof',TD:'French/Arabic',AR:'Spanish',AF:'Afrikaans',AM:'Amharic',AR:'Spanish',AZ:'Azerbaijani',BE:'French/Dutch',BG:'Bulgarian',BN:'Bengali',BR:'Portuguese',BS:'Bosnian',BY:'Belarusian',CA:'English/French',CH:'German/French/Italian',CN:'Mandarin',CS:'Czech',CY:'Welsh',DA:'Danish',DE:'German',DZ:'Arabic',EE:'Estonian',EG:'Arabic',EL:'Greek',EN:'English',ES:'Spanish',ET:'Estonian',FA:'Persian',FI:'Finnish',FR:'French',GA:'Irish',GE:'Georgian',GL:'Galician',GU:'Gujarati',HE:'Hebrew',HI:'Hindi',HR:'Croatian',HU:'Hungarian',HY:'Armenian',ID:'Indonesian',IL:'Hebrew',IN:'Hindi/English',IQ:'Arabic',IR:'Persian',IS:'Icelandic',IT:'Italian',JA:'Japanese',JP:'Japanese',KA:'Georgian',KE:'Swahili',KK:'Kazakh',KM:'Khmer',KN:'Kannada',KO:'Korean',KR:'Korean',KY:'Kyrgyz',LO:'Lao',LT:'Lithuanian',LV:'Latvian',MK:'Macedonian',ML:'Malayalam',MN:'Mongolian',MR:'Marathi',MS:'Malay',MT:'Maltese',MX:'Spanish',MY:'Malay/English',NG:'English/Hausa',NL:'Dutch',NO:'Norwegian',NP:'Nepali',NZ:'English',PA:'Punjabi',PH:'Filipino',PK:'Urdu',PL:'Polish',PS:'Pashto',PT:'Portuguese',RO:'Romanian',RS:'Serbian',RU:'Russian',SA:'Arabic',SE:'Swedish',SI:'Sinhala',SK:'Slovak',SL:'Slovenian',SO:'Somali',SQ:'Albanian',SR:'Serbian',SV:'Swedish',SW:'Swahili',SY:'Arabic',TA:'Tamil',TH:'Thai',TJ:'Tajik',TK:'Turkmen',TL:'Filipino',TR:'Turkish',TT:'Tatar',TW:'Mandarin',UA:'Ukrainian',UG:'Uyghur',UK:'Ukrainian',UR:'Urdu',US:'English',UZ:'Uzbek',VN:'Vietnamese',YE:'Arabic',ZA:'Zulu/Xhosa',ZH:'Mandarin',ZW:'Shona/English'};
 
 const WX={0:{d:'Clear sky',i:'☀️',w:'sunny'},1:{d:'Mostly clear',i:'🌤️',w:'sunny'},2:{d:'Partly cloudy',i:'⛅',w:'cloudy'},3:{d:'Overcast',i:'☁️',w:'cloudy'},45:{d:'Foggy',i:'🌫️',w:'cloudy'},48:{d:'Icy fog',i:'🌫️',w:'snowy'},51:{d:'Light drizzle',i:'🌦️',w:'rainy'},53:{d:'Drizzle',i:'🌦️',w:'rainy'},55:{d:'Heavy drizzle',i:'🌧️',w:'rainy'},61:{d:'Light rain',i:'🌧️',w:'rainy'},63:{d:'Rain',i:'🌧️',w:'rainy'},65:{d:'Heavy rain',i:'🌧️',w:'rainy'},71:{d:'Light snow',i:'🌨️',w:'snowy'},73:{d:'Snow',i:'❄️',w:'snowy'},75:{d:'Heavy snow',i:'❄️',w:'snowy'},80:{d:'Showers',i:'🌦️',w:'rainy'},81:{d:'Showers',i:'🌧️',w:'rainy'},82:{d:'Heavy showers',i:'⛈️',w:'stormy'},95:{d:'Thunderstorm',i:'⛈️',w:'stormy'},96:{d:'Storm+hail',i:'⛈️',w:'stormy'},99:{d:'Heavy storm',i:'⛈️',w:'stormy'}};
 
@@ -933,10 +933,10 @@ HOTSPOTS.forEach((h,i)=>{
   const mood=computeMood(utcOffSec,0,isWeekend); // weather=0 (clear) as baseline
   h.mood=mood;
   const icon=L.divIcon({
-    html:`<div style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer">
+    html:`<div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer">
       <div class="hs-dot" id="hsdot-${i}" style="background:${h.color};color:${h.color};animation-delay:${delay}s"></div>
     </div>`,
-    className:'',iconSize:[44,44],iconAnchor:[22,22]
+    className:'',iconSize:[28,28],iconAnchor:[14,14]
   });
   const marker=L.marker([h.lat,h.lon],{icon})
     .addTo(mapObj)
@@ -953,7 +953,9 @@ mapObj.on('click',e=>{
 });
 
 // ── CLICK HANDLER ─────────────────────────────────────────────────────────────
+let _clickSeq=0; // incremented on every city click — stale async callbacks check this
 async function onMapClick(lat,lon,knownCity,knownCC){
+  const mySeq=++_clickSeq; // capture this click's sequence number
   showLoading(true,'Reading the city…');
   stopAudio();
   dropRipple(lat,lon);
@@ -971,7 +973,10 @@ async function onMapClick(lat,lon,knownCity,knownCC){
     let cc,city,country;
 
     if(knownCity&&knownCC){
-      city=knownCity; cc=knownCC.toUpperCase(); country=knownCity;
+      city=knownCity; cc=knownCC.toUpperCase();
+      // Resolve proper country name from cc (avoid showing city as country)
+      const CC_NAMES={US:'United States',GB:'United Kingdom',FR:'France',JP:'Japan',IN:'India',BR:'Brazil',RU:'Russia',AU:'Australia',EG:'Egypt',SG:'Singapore',ZA:'South Africa',KR:'South Korea',TR:'Turkey',DE:'Germany',AR:'Argentina',CA:'Canada',MX:'Mexico',CO:'Colombia',MA:'Morocco',NG:'Nigeria',CD:'DR Congo',CM:'Cameroon',SN:'Senegal',SE:'Sweden',NL:'Netherlands',AT:'Austria',ES:'Spain',IT:'Italy',UA:'Ukraine',CN:'China',TH:'Thailand',MY:'Malaysia',ID:'Indonesia',TD:'Chad'};
+      country=CC_NAMES[cc]||cc;
     } else {
       const geo=await fetchGeo(lat,lon);
       cc=(geo.countryCode||'').toUpperCase();
@@ -1059,14 +1064,21 @@ async function onMapClick(lat,lon,knownCity,knownCC){
 
     setLoadingLabel('Finding radio stations…');
     const t0=Date.now();
-    stations=await fetchStations(cc);
+    const fetched=await fetchStations(cc);
+    if(mySeq!==_clickSeq)return; // user already clicked another city — discard
+    stations=fetched;
     const fetchMs=Date.now()-t0;
     skipCount=0;
     document.getElementById('stn-counter').innerHTML=`📡 Radio Browser API · ${fetchMs}ms`;
 
+    // Pre-fetch global fallback in parallel — ready instantly if all local streams fail
+    window._fallbackReady=fetchFallbackStations();
+
     if(!stations.length){
       setLoadingLabel('Trying nearby stations…');
-      stations=await fetchFallbackStations();
+      stations=await window._fallbackReady;
+      window._fallbackReady=null;
+      if(mySeq!==_clickSeq)return;
       if(stations.length){
         currentIdx=0; await playStation(0); renderList();
         document.getElementById('stn-counter').innerHTML=`📡 Global top stations · ${country} not yet indexed`;
@@ -1250,27 +1262,52 @@ async function fetchWeather(lat,lon){
   }catch{return null;}
 }
 
+// HLS (.m3u8) streams require HLS.js — skip them on non-Safari browsers
+const CAN_PLAY_HLS=!!(document.createElement('video').canPlayType('application/vnd.apple.mpegurl'));
+function isPlayable(url){
+  if(!url)return false;
+  if((url.includes('.m3u8')||url.includes('/hls/'))&&!CAN_PLAY_HLS)return false;
+  return url.startsWith('http');
+}
+
+// Sort: native HTTPS + non-zero bitrate first, then native HTTPS, then upgraded http→https
+function prepareStations(list){
+  return list
+    .filter(s=>isPlayable(s.url_resolved))
+    .map(s=>({
+      ...s,
+      _nativeHttps:s.url_resolved.startsWith('https://'),
+      url_resolved:s.url_resolved.replace(/^http:\/\//,'https://')
+    }))
+    .sort((a,b)=>{
+      // Score: native HTTPS with bitrate > 0 scores best
+      const scoreA=(a._nativeHttps?2:0)+(a.bitrate>0?1:0);
+      const scoreB=(b._nativeHttps?2:0)+(b.bitrate>0?1:0);
+      return scoreB-scoreA;
+    });
+}
+
 async function fetchStations(cc){
   const srv=SERVERS[Math.floor(Math.random()*SERVERS.length)];
   try{
-    // Try with broken hidden first (best quality)
-    const r=await fetch(`https://${srv}/json/stations/search?countrycode=${cc}&limit=30&hidebroken=true&order=votes&reverse=true`,{headers:{'User-Agent':'PULSE-App/1.0'}});
+    // Pass 1: hidebroken=true, high limit
+    const r=await fetch(`https://${srv}/json/stations/search?countrycode=${cc}&limit=80&hidebroken=true&order=votes&reverse=true`,{headers:{'User-Agent':'PULSE-App/1.0'}});
     const d=await r.json();
-    const list=Array.isArray(d)?d.filter(s=>s.url_resolved?.startsWith('http')):[];
+    const list=prepareStations(Array.isArray(d)?d:[]);
     if(list.length)return list;
-    // Fallback: include all stations (some countries have very few)
-    const r2=await fetch(`https://${srv}/json/stations/search?countrycode=${cc}&limit=30&order=votes&reverse=true`,{headers:{'User-Agent':'PULSE-App/1.0'}});
+    // Pass 2: relax broken filter — some countries have no "not broken" entries
+    const r2=await fetch(`https://${srv}/json/stations/search?countrycode=${cc}&limit=80&order=votes&reverse=true`,{headers:{'User-Agent':'PULSE-App/1.0'}});
     const d2=await r2.json();
-    return Array.isArray(d2)?d2.filter(s=>s.url_resolved?.startsWith('http')):[];
+    return prepareStations(Array.isArray(d2)?d2:[]);
   }catch{return[];}
 }
 
 async function fetchFallbackStations(){
   const srv=SERVERS[Math.floor(Math.random()*SERVERS.length)];
   try{
-    const r=await fetch(`https://${srv}/json/stations/search?limit=15&hidebroken=true&order=votes&reverse=true`,{headers:{'User-Agent':'PULSE-App/1.0'}});
+    const r=await fetch(`https://${srv}/json/stations/search?limit=30&hidebroken=true&order=votes&reverse=true`,{headers:{'User-Agent':'PULSE-App/1.0'}});
     const d=await r.json();
-    return Array.isArray(d)?d.filter(s=>s.url_resolved?.startsWith('http')):[];
+    return prepareStations(Array.isArray(d)?d:[]);
   }catch{return[];}
 }
 
@@ -1358,10 +1395,19 @@ document.addEventListener('click',e=>{
 });
 
 // ── PLAYER ────────────────────────────────────────────────────────────────────
+let stallTimer=null;
+function clearStallTimer(){clearTimeout(stallTimer);stallTimer=null;}
+
 async function playStation(idx){
   const s=stations[idx];if(!s)return;
   currentIdx=idx;
   const audio=document.getElementById('audio');
+  clearStallTimer();
+  // Clear ALL handlers BEFORE touching src — setting src='' fires onerror with old handler
+  // which would cascade into a double-skip loop burning through all stations instantly
+  audio.onerror=null;audio.onwaiting=null;audio.onstalled=null;audio.onplaying=null;
+  audio.pause();audio.src='';
+
   document.getElementById('stn-name-main').textContent=s.name||'Unknown Station';
   document.getElementById('ps-text').textContent='Connecting…';
   document.getElementById('bitrate-val').textContent=s.bitrate||'—';
@@ -1372,30 +1418,69 @@ async function playStation(idx){
   const tags=(s.tags||'').split(',').map(t=>t.trim()).filter(Boolean).slice(0,5);
   (tags.length?tags:['radio']).forEach(t=>{const el=document.createElement('span');el.className='tag';el.textContent=t;tagsEl.appendChild(el);});
 
-  audio.src=s.url_resolved;
-  audio.onerror=()=>{
+  const myPlaySeq=_clickSeq; // snapshot at time playStation was called
+  function tryNextStation(){
+    clearStallTimer();
+    if(_clickSeq!==myPlaySeq)return; // another city was clicked — stop skipping
     if(skipCount<stations.length-1){
       skipCount++;
+      document.getElementById('ps-text').textContent=`Trying stream ${skipCount+1}…`;
       playStation((currentIdx+1)%stations.length);
     } else {
-      document.getElementById('ps-text').textContent='Streams unavailable';
-      document.getElementById('stn-name-main').textContent='Try a different city';
-      setWaveform('paused');
+      // All country stations exhausted — use pre-fetched fallback or fetch now
+      document.getElementById('ps-text').textContent='Finding global stream…';
+      const fb=window._fallbackReady||fetchFallbackStations();
+      window._fallbackReady=null;
+      Promise.resolve(fb).then(fallback=>{
+        if(_clickSeq!==myPlaySeq)return; // stale — another city was clicked
+        if(fallback.length){
+          stations=fallback;skipCount=0;currentIdx=0;
+          renderList();playStation(0);
+          document.getElementById('stn-counter').innerHTML=
+            `📡 Global top stations · local streams unavailable`;
+        } else {
+          document.getElementById('ps-text').textContent='No streams available';
+          document.getElementById('stn-name-main').textContent='Try a different city';
+          setWaveform('paused');setMonkey(false);
+        }
+      });
     }
+  }
+
+  audio.onerror=tryNextStation;
+
+  // Stall detection: if buffering > 9s with no playback, skip
+  // 5s stall timeout for all streams — long enough for slow connections, short enough to not frustrate
+  const stallMs=5000;
+  audio.onwaiting=()=>{
+    clearStallTimer();
+    stallTimer=setTimeout(tryNextStation,stallMs);
   };
-  try{
-    await audio.play();
+  audio.onplaying=()=>{
+    clearStallTimer();
     skipCount=0;isPlaying=true;
     document.getElementById('btn-play').textContent='⏸';
-    document.getElementById('ps-text').textContent='Live Radio';
-    setWaveform('playing');
-    setMonkey(true);
+    // If station is from a different country, note it subtly
+    const scc=(s.countrycode||'').toUpperCase();
+    const selectedCC=(currentCityData?.cc||'').toUpperCase();
+    const isLocal=!scc||!selectedCC||scc===selectedCC;
+    document.getElementById('ps-text').textContent=isLocal?'Live Radio':'🌐 Global stream · local streams unavailable';
+    setWaveform('playing');setMonkey(true);
+  };
+  audio.onstalled=()=>{
+    clearStallTimer();
+    stallTimer=setTimeout(tryNextStation,stallMs);
+  };
+
+  audio.src=s.url_resolved;
+  try{
+    await audio.play();
   }catch{
+    // Autoplay blocked — user must tap play; don't skip, stream may still be valid
     isPlaying=false;
     document.getElementById('btn-play').textContent='▶';
     document.getElementById('ps-text').textContent='Tap ▶ to play';
-    setWaveform('hidden');
-    setMonkey(false);
+    setWaveform('hidden');setMonkey(false);
   }
   highlightList(idx);
 }
@@ -1576,6 +1661,8 @@ function canPost(){
 }
 
 let currentPostCC='',currentPostCity='';
+// City-level key for postcards (e.g. "new_delhi", "sao_paulo")
+function cityKey(){return currentPostCity.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');}
 
 function togglePostForm(){
   document.getElementById('postcard-form').classList.toggle('open');
@@ -1623,13 +1710,13 @@ async function submitPost(){
 
   try{
     if(USE_FIREBASE){
-      const r=await fetch(`${FB_URL}/postcards/${currentPostCC}.json`,{
+      const r=await fetch(`${FB_URL}/postcards/${cityKey()}.json`,{
         method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(post)
       });
       if(!r.ok)throw new Error('Firebase error');
     } else {
-      // localStorage fallback
-      const key=`pulse_msgs_${currentPostCC}`;
+      // localStorage fallback — keyed by city so Mumbai and Delhi don't share a board
+      const key=`pulse_msgs_${cityKey()}`;
       const posts=JSON.parse(localStorage.getItem(key)||'[]');
       posts.unshift(post);
       if(posts.length>50)posts.splice(50);
@@ -1652,18 +1739,18 @@ async function renderPosts(){
   let posts=[];
   try{
     if(USE_FIREBASE){
-      const r=await fetch(`${FB_URL}/postcards/${currentPostCC}.json?orderBy="ts"&limitToLast=20`);
+      const r=await fetch(`${FB_URL}/postcards/${cityKey()}.json?orderBy="ts"&limitToLast=20`);
       const data=await r.json();
       if(data&&typeof data==='object')
         posts=Object.values(data).sort((a,b)=>b.ts-a.ts).slice(0,15);
     } else {
-      const key=`pulse_msgs_${currentPostCC}`;
+      const key=`pulse_msgs_${cityKey()}`;
       posts=JSON.parse(localStorage.getItem(key)||'[]').slice(0,15);
     }
   }catch{}
 
   if(!posts.length){
-    el.innerHTML=`<div class="no-posts">No messages yet for this country.<br>Be the first to say something ✨</div>`;
+    el.innerHTML=`<div class="no-posts">No messages yet for ${currentPostCity||'this city'}.<br>Be the first to say something ✨</div>`;
     return;
   }
   const f=flag(currentPostCC);
@@ -1816,6 +1903,11 @@ function openPostcards(cc,city){
   currentPostCC=cc;currentPostCity=city;
   document.getElementById('postcards-section').style.display='block';
   document.getElementById('postcard-form').classList.remove('open');
+  // Clear stale inputs from previous city
+  document.getElementById('pc-msg').value='';
+  document.getElementById('pc-name').value='';
+  document.getElementById('anon-check').checked=false;
+  updateCharCount();
   renderPosts();
 }
 </script>
